@@ -37,7 +37,9 @@ export default function Layout() {
       })}
     >
       <Tabs.Screen name="index" options={{ title: "Home" }} />
-      <Tabs.Screen name="cart" options={{ title: "Cart" }} />
+      <Tabs.Screen name="cart" options={{ title: "Cart", tabBarIcon: ({ color, size }) => (
+    <Ionicons name="cart-outline" size={size} color={color} />
+) }} />
       <Tabs.Screen name="myorder" options={{ title: "Orders" }} />
       <Tabs.Screen name="wishlist" options={{ title: "Wishlist" }} />
       <Tabs.Screen name="profile" options={{ title: "Profile" }} />
