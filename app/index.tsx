@@ -3,7 +3,9 @@ import { View, StyleSheet, TouchableWithoutFeedback, Keyboard, ScrollView } from
 import Header from "../components/Header";
 import SidebarMenu from "../components/SidebarMenu";
 import HomeBanner from "../components/HomeBanner"; // Import the banner component
-
+import BrandList from "../components/BrandList";
+import FeaturedProducts from "../components/FeaturedProducts";
+import BlogList from "../components/Blog";
 export default function HomeScreen() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
@@ -24,6 +26,9 @@ export default function HomeScreen() {
 
         {/* Banner below Header */}
         <HomeBanner />
+        <BrandList />
+        <FeaturedProducts title="Sản phẩm nổi bật" /> {/* ✅ Hiển thị sản phẩm nổi bật */}
+        <BlogList />
 
         {/* Other content can be added here */}
       </ScrollView>
