@@ -3,6 +3,8 @@ const BASE_URL = "http://172.20.10.4:3000/api";
 export const CATEGORIES = `${BASE_URL}/types`;
 export const SUBCATEGORIES = `${BASE_URL}/subcategories`;
 export const BRANDS = `${BASE_URL}/brands`;
+export const API_CART = `${BASE_URL}/carts`;
+export const WISHLIST = `${BASE_URL}/users/wishlist`;
 
 export const FEATURED_PRODUCTS = `${BASE_URL}/products/featured?limit=8`;
 export const ALL_PRODUCTS = `${BASE_URL}/products`;
