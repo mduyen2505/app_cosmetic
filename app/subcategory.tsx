@@ -8,31 +8,63 @@ import {
   TouchableOpacity,
   SafeAreaView,
 } from "react-native";
-import ProductCard from "../components/ProductCard"; // ✅ Import component
-import { RouteProp, useRoute, useNavigation } from "@react-navigation/native";
+import { RouteProp, useRoute, useNavigation } from "@react-navigation/native"; // ✅ Import RouteProp
 import { Ionicons } from "@expo/vector-icons";
+import ProductCard from "../components/ProductCard"; // ✅ Sử dụng lại ProductCard
+import { getProductsBySubcategory } from "../api/apiconfig"; // ✅ Import API
 
-type SubCategoryScreenRouteProp = RouteProp<{ SubCategoryScreen: { subCategoryId: string } }, "SubCategoryScreen">;
+// 🟢 Định nghĩa ParamList cho React Navigation
+type RootStackParamList = {
+  SubCategoryScreen: { subCategoryId: string , subCategoryName: string};
+};
 
-const dummyProducts = Array.from({ length: 30 }, (_, index) => ({
-  id: index.toString(),
-  name: `Sản phẩm con ${index + 1}`,
-  price: 50000 + index * 2000,
-  discount: index % 3 === 0 ? 15 : 0,
-  promotionPrice: 50000 + index * 2000 - 5000,
-  rating: Math.floor(Math.random() * 5) + 1,
-  reviewCount: Math.floor(Math.random() * 50),
-  image: "https://via.placeholder.com/150",
-}));
+// 🟢 Cập nhật kiểu route prop
+type SubCategoryScreenRouteProp = RouteProp<RootStackParamList, "SubCategoryScreen">;
+
+// 🟢 Định nghĩa kiểu dữ liệu sản phẩm từ API
+interface Product {
+  _id: string;
+  name: string;
+  price: number;
+  discount: number;
+  promotionPrice: number;
+  rating: number;
+  reviewCount: number;
+  image: string;
+}
 
 const SubCategoryScreen = () => {
-  const route = useRoute<SubCategoryScreenRouteProp>();
+  const route = useRoute<SubCategoryScreenRouteProp>(); // ✅ Sử dụng RouteProp đúng kiểu
   const navigation = useNavigation();
-  const { subCategoryId } = route.params || {}; // ✅ Tránh lỗi nếu `params` bị undefined
-  const [products, setProducts] = useState(dummyProducts);
-  const [loading, setLoading] = useState(false);
-  const [currentPage, setCurrentPage] = useState(1);
+  const { subCategoryId, subCategoryName } = route.params || {}; // ✅ Nhận thêm subCategoryName
+
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+
+  
+  const [currentPage, setCurrentPage] = useState<number>(1);
   const productsPerPage = 10;
+
+  // 🟢 Gọi API lấy danh sách sản phẩm theo danh mục con
+  useEffect(() => {
+    const fetchProducts = async () => {
+      try {
+        setLoading(true);
+        const apiUrl = getProductsBySubcategory(subCategoryId);
+        const response = await fetch(apiUrl);
+        if (!response.ok) throw new Error(`Lỗi HTTP! Status: ${response.status}`);
+
+        const data: Product[] = await response.json();
+        setProducts(data);
+      } catch (error) {
+        console.error("Lỗi khi tải sản phẩm theo danh mục con:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProducts();
+  }, [subCategoryId]);
 
   const totalPages = Math.ceil(products.length / productsPerPage);
   const currentProducts = products.slice(
@@ -47,8 +79,8 @@ const SubCategoryScreen = () => {
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color="black" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Danh mục con: {subCategoryId}</Text>
-        <View style={{ width: 40 }} /> {/* Chừa khoảng trống để căn giữa tiêu đề */}
+        <Text style={styles.headerTitle}>{subCategoryName || "Danh mục con"}</Text> {/* ✅ Hiển thị tên */}
+        <View style={{ width: 40 }} /> {/* Giữ khoảng trống để căn giữa tiêu đề */}
       </View>
 
       <View style={styles.container}>
@@ -57,7 +89,7 @@ const SubCategoryScreen = () => {
         ) : (
           <FlatList
             data={currentProducts}
-            keyExtractor={(item) => item.id}
+            keyExtractor={(item) => item._id}
             numColumns={2}
             columnWrapperStyle={styles.row} // ✅ Căn chỉnh đều các cột
             renderItem={({ item }) => <ProductCard product={item} />}
@@ -88,6 +120,8 @@ const SubCategoryScreen = () => {
   );
 };
 
+
+// 🎨 **Styles**
 const styles = StyleSheet.create({
   safeContainer: {
     flex: 1,

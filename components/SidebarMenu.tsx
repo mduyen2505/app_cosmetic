@@ -146,14 +146,21 @@ export default function SidebarMenu({
         {expandedCategory === category._id &&
           subcategories[category._id]?.map((sub) => (
             <TouchableOpacity
-              key={sub._id}
-              onPress={() => {
-                toggleSidebar();
-                router.push(`/subcategory?subCategoryId=${sub._id}`); // ✅ Điều hướng đến màn hình subcategory
-              }}
-            >
-              <Text style={styles.subcategory}>{sub.name}</Text>
-            </TouchableOpacity>
+  key={sub._id}
+  onPress={() => {
+    toggleSidebar();
+    router.push({
+      pathname: "/subcategory",
+      params: {
+        subCategoryId: sub._id,
+        subCategoryName: sub.name, // ✅ Truyền cả tên danh mục con
+      },
+    });
+  }}
+>
+  <Text style={styles.subcategory}>{sub.name}</Text>
+</TouchableOpacity>
+
           ))}
       </View>
     ))

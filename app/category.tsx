@@ -7,33 +7,57 @@ import {
   StyleSheet,
   TouchableOpacity,
   SafeAreaView,
-  ScrollView,
 } from "react-native";
-import ProductCard from "../components/ProductCard"; // ✅ Import component
-import { RouteProp, useRoute, useNavigation } from "@react-navigation/native";
+import ProductCard from "../components/ProductCard";
+import { useLocalSearchParams, useRouter } from "expo-router"; // ✅ Hook điều hướng
 import { Ionicons } from "@expo/vector-icons";
+import { getProductsByCategory } from "../api/apiconfig";
 
-type CategoryScreenRouteProp = RouteProp<{ CategoryScreen: { typeId: string } }, "CategoryScreen">;
-
-const dummyProducts = Array.from({ length: 50 }, (_, index) => ({
-  id: index.toString(),
-  name: `Sản phẩm ${index + 1}`,
-  price: 100000 + index * 5000,
-  discount: index % 2 === 0 ? 10 : 0,
-  promotionPrice: 100000 + index * 5000 - 10000,
-  rating: Math.floor(Math.random() * 5) + 1,
-  reviewCount: Math.floor(Math.random() * 100),
-  image: "https://via.placeholder.com/150",
-}));
+// Định nghĩa kiểu dữ liệu sản phẩm
+interface Product {
+  _id: string;
+  name: string;
+  price: number;
+  discount: number;
+  promotionPrice: number;
+  rating: number;
+  reviewCount: number;
+  image: string;
+}
 
 const CategoryScreen = () => {
-  const route = useRoute<CategoryScreenRouteProp>();
-  const navigation = useNavigation();
-  const { typeId } = route.params || {}; // ✅ Tránh lỗi nếu `params` bị undefined
-  const [products, setProducts] = useState(dummyProducts);
-  const [loading, setLoading] = useState(false);
+  const { typeId } = useLocalSearchParams();
+  const router = useRouter();
+  const [products, setProducts] = useState<Product[]>([]);
+  const [brands, setBrands] = useState<{ _id: string; name: string }[]>([]);
+  const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
   const productsPerPage = 10;
+
+  useEffect(() => {
+    const fetchProducts = async () => {
+        try {
+          if (!typeId) return;
+          setLoading(true); // ✅ Bắt đầu loading khi typeId thay đổi
+          setProducts([]); // ✅ Xóa danh sách sản phẩm cũ trước khi tải danh sách mới
+    
+          const apiUrl = getProductsByCategory(typeId.toString());
+          console.log("Fetching products from:", apiUrl);
+    
+          const response = await fetch(apiUrl);
+          if (!response.ok) throw new Error(`Lỗi HTTP! Status: ${response.status}`);
+    
+          const data: Product[] = await response.json();
+          setProducts(data); // ✅ Cập nhật danh sách sản phẩm mới
+        } catch (error) {
+          console.error("Lỗi khi lấy sản phẩm theo danh mục:", error);
+        } finally {
+          setLoading(false); // ✅ Kết thúc loading
+        }
+      };
+    
+      fetchProducts();
+    }, [typeId]); // ✅ Mỗi khi typeId thay đổi, gọi lại API
 
   const totalPages = Math.ceil(products.length / productsPerPage);
   const currentProducts = products.slice(
@@ -41,33 +65,9 @@ const CategoryScreen = () => {
     currentPage * productsPerPage
   );
 
-  const loadMoreProducts = async () => {
-    setLoading(true);
-    try {
-      const newProducts = Array.from({ length: 10 }, (_, index) => ({
-        id: `${products.length + index}`,
-        name: `Sản phẩm mới ${index + 1}`,
-        price: 100000 + index * 5000,
-        discount: index % 2 === 0 ? 10 : 0,
-        promotionPrice: 100000 + index * 5000 - 10000,
-        rating: Math.floor(Math.random() * 5) + 1,
-        reviewCount: Math.floor(Math.random() * 100),
-        image: "https://via.placeholder.com/150",
-      }));
-      setProducts([...products, ...newProducts]);
-    } catch (error) {
-      console.error("Lỗi tải thêm sản phẩm:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handlePageChange = (direction: "next" | "prev") => {
     if (direction === "next" && currentPage < totalPages) {
       setCurrentPage((prev) => prev + 1);
-      if (currentPage === totalPages - 1) {
-        loadMoreProducts();
-      }
     } else if (direction === "prev" && currentPage > 1) {
       setCurrentPage((prev) => prev - 1);
     }
@@ -77,10 +77,10 @@ const CategoryScreen = () => {
     <SafeAreaView style={styles.safeContainer}>
       {/* ✅ Header với nút quay lại */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color="black" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Danh mục: {typeId}</Text>
+        <Text style={styles.headerTitle}>Danh mục</Text>
         <View style={{ width: 40 }} /> {/* Chừa khoảng trống để căn giữa tiêu đề */}
       </View>
 
@@ -88,39 +88,42 @@ const CategoryScreen = () => {
         {loading ? (
           <ActivityIndicator size="large" color="#ff758c" />
         ) : (
-          <FlatList
-            data={currentProducts}
-            keyExtractor={(item) => item.id}
-            numColumns={2}
-            columnWrapperStyle={styles.row} // ✅ Căn chỉnh đều các cột
-            renderItem={({ item }) => <ProductCard product={item} />}
-            ListFooterComponent={
-              <View style={styles.pagination}>
-                <TouchableOpacity
-                  disabled={currentPage === 1}
-                  onPress={() => handlePageChange("prev")}
-                  style={[styles.pageButton, currentPage === 1 && styles.disabledButton]}
-                >
-                  <Text style={styles.pageText}>Trước</Text>
-                </TouchableOpacity>
+          <>
+            <FlatList
+              data={currentProducts}
+              keyExtractor={(item) => item._id}
+              numColumns={2}
+              columnWrapperStyle={styles.row} // ✅ Căn chỉnh đều các cột
+              renderItem={({ item }) => <ProductCard product={item} />}
+              ListFooterComponent={
+                <View style={styles.pagination}>
+                  <TouchableOpacity
+                    disabled={currentPage === 1}
+                    onPress={() => handlePageChange("prev")}
+                    style={[styles.pageButton, currentPage === 1 && styles.disabledButton]}
+                  >
+                    <Text style={styles.pageText}>Trước</Text>
+                  </TouchableOpacity>
 
-                <TouchableOpacity
-                  disabled={currentPage === totalPages}
-                  onPress={() => handlePageChange("next")}
-                  style={[styles.pageButton, currentPage === totalPages && styles.disabledButton]}
-                >
-                  <Text style={styles.pageText}>Tiếp</Text>
-                </TouchableOpacity>
-              </View>
-            }
-            showsVerticalScrollIndicator={false} // ✅ Ẩn thanh trượt
-          />
+                  <TouchableOpacity
+                    disabled={currentPage === totalPages}
+                    onPress={() => handlePageChange("next")}
+                    style={[styles.pageButton, currentPage === totalPages && styles.disabledButton]}
+                  >
+                    <Text style={styles.pageText}>Tiếp</Text>
+                  </TouchableOpacity>
+                </View>
+              }
+              showsVerticalScrollIndicator={false} // ✅ Ẩn thanh trượt
+            />
+          </>
         )}
       </View>
     </SafeAreaView>
   );
 };
 
+// 🎨 **Styles**
 const styles = StyleSheet.create({
   safeContainer: {
     flex: 1,
