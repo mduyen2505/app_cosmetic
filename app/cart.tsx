@@ -221,12 +221,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
-    elevation: 10, // Tạo hiệu ứng nổi lên
+    elevation: 10, // ✅ Giữ hiệu ứng nổi lên
     shadowColor: "#000",
     shadowOpacity: 0.2,
     shadowOffset: { width: 0, height: -2 },
     position: "absolute",
-    bottom: 0,
+    bottom: 70, // ✅ Đẩy lên trên tabBar
     left: 0,
     right: 0,
   },
@@ -251,7 +251,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     paddingVertical: 14,
     borderRadius: 30, // Bo góc tròn
-    elevation: 5, // Tạo hiệu ứng nổi
+    elevation: 5, // ✅ Hiệu ứng nổi
     shadowColor: "#000",
     shadowOpacity: 0.3,
     shadowOffset: { width: 0, height: 4 },
