@@ -9,6 +9,8 @@ import {
   TouchableOpacity,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
+
 
 const { width } = Dimensions.get("window");
 
@@ -16,25 +18,24 @@ const { width } = Dimensions.get("window");
 const brands = [
   { id: "1", title: "L'Oreal", image: "https://example.com/loreal.png" },
   { id: "2", title: "Cocoon", image: "https://example.com/cocoon.png" },
-  { id: "3", title: "La Roche-Posay", image: "https://example.com/laroche.png" },
-  { id: "4", title: "Cetaphil", image: "https://example.com/cetaphil.png" },
-  { id: "5", title: "Simple", image: "https://example.com/simple.png" },
-  { id: "6", title: "Silcot", image: "https://example.com/silcot.png" },
-  { id: "7", title: "JM Solution", image: "https://example.com/jmsolution.png" },
-  { id: "8", title: "DHC", image: "https://example.com/dhc.png" },
-  { id: "9", title: "Some By Mi", image: "https://example.com/somebymi.png" },
 ];
 
-// Component hiển thị thương hiệu nhỏ gọn
+// ✅ Component hiển thị thương hiệu
 const BrandItem = ({ item }: { item: { id: string; title: string; image: string } }) => {
+  const router = useRouter(); // ✅ Sử dụng điều hướng
+
   return (
-    <View style={styles.brandContainer}>
+    <TouchableOpacity
+      style={styles.brandContainer}
+      onPress={() => router.push(`/brand?brandId=${item.id}`)} // 🔥 Điều hướng đến trang danh sách sản phẩm theo thương hiệu
+    >
       <Image source={{ uri: item.image }} style={styles.brandImage} />
       <Text style={styles.brandTitle}>{item.title}</Text>
-    </View>
+    </TouchableOpacity>
   );
 };
 
+// ✅ Component chính hiển thị danh sách thương hiệu
 export default function BrandList() {
   return (
     <View style={styles.container}>

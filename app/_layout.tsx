@@ -1,6 +1,7 @@
 import React from "react";
 import { Tabs } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
+import { View } from "react-native";
 
 export default function Layout() {
   return (
@@ -13,6 +14,7 @@ export default function Layout() {
           borderTopWidth: 1,
           borderTopColor: "#ddd",
           height: 70,
+          paddingBottom: 10, // ✅ Căn chỉnh tab không bị cắt
         },
         tabBarIcon: ({ color, size, focused }) => {
           let iconName: keyof typeof Ionicons.glyphMap;
@@ -22,7 +24,7 @@ export default function Layout() {
           else if (route.name === "myorder") iconName = "receipt-outline";
           else if (route.name === "wishlist") iconName = "heart-outline";
           else if (route.name === "profile") iconName = "person-outline";
-          else iconName = "help-circle-outline"; // Biểu tượng mặc định
+          else return <View />; // 🔥 Không hiển thị icon cho các trang ẩn
 
           return (
             <Ionicons
@@ -36,15 +38,20 @@ export default function Layout() {
         tabBarInactiveTintColor: "#999", // ✅ Màu khi chưa chọn
       })}
     >
+      {/* Các tab chính */}
       <Tabs.Screen name="index" options={{ title: "Home" }} />
-      <Tabs.Screen name="cart" options={{ title: "Cart", tabBarIcon: ({ color, size }) => (
-    <Ionicons name="cart-outline" size={size} color={color} />
-) }} />
+      <Tabs.Screen name="cart" options={{ title: "Cart" }} />
       <Tabs.Screen name="myorder" options={{ title: "Orders" }} />
       <Tabs.Screen name="wishlist" options={{ title: "Wishlist" }} />
       <Tabs.Screen name="profile" options={{ title: "Profile" }} />
+
+      {/* Các trang danh mục, ẩn khỏi tab */}
       <Tabs.Screen name="category" options={{ href: null }} />
       <Tabs.Screen name="subcategory" options={{ href: null }} />
+      <Tabs.Screen name="productdetail" options={{ href: null }} />
+      <Tabs.Screen name="brand" options={{ href: null }} /> {/* ✅ Thêm brand */}
+
+
     </Tabs>
   );
 }

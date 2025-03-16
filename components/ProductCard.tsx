@@ -6,23 +6,24 @@ import {
   StyleSheet, 
   TouchableOpacity 
 } from "react-native";
-import { Ionicons, FontAwesome } from "@expo/vector-icons"; // ✅ Import FontAwesome để hiển thị sao
+import { Ionicons, FontAwesome } from "@expo/vector-icons"; 
+import { useRouter } from "expo-router";
 
 export default function ProductCard({ product }: { product: any }) {
   const [isFavorite, setIsFavorite] = useState(false);
+  const router = useRouter();
 
   const handleWishlistToggle = () => {
     setIsFavorite(!isFavorite);
   };
 
-  // ✅ Hàm tạo danh sách sao dựa trên rating
   const renderStars = (rating: number) => {
     let stars = [];
     for (let i = 1; i <= 5; i++) {
       stars.push(
         <FontAwesome
           key={i}
-          name={i <= rating ? "star" : "star-o"} // Nếu nhỏ hơn rating thì là sao đầy, ngược lại là sao rỗng
+          name={i <= rating ? "star" : "star-o"} 
           size={14}
           color="#FFD700"
           style={{ marginRight: 2 }}
@@ -33,15 +34,16 @@ export default function ProductCard({ product }: { product: any }) {
   };
 
   return (
-    <TouchableOpacity style={styles.card}>
-      {/* Gắn tag giảm giá nếu có */}
+    <TouchableOpacity 
+      style={styles.card}
+      onPress={() => router.push(`/productdetail?productId=${product.id}`)} 
+    >
       {product.discount > 0 && (
         <View style={styles.discountTag}>
           <Text style={styles.discountText}>-{product.discount}%</Text>
         </View>
       )}
 
-      {/* Icon Yêu thích */}
       <TouchableOpacity onPress={handleWishlistToggle} style={styles.favoriteIcon}>
         <Ionicons 
           name={isFavorite ? "heart" : "heart-outline"} 
@@ -50,20 +52,16 @@ export default function ProductCard({ product }: { product: any }) {
         />
       </TouchableOpacity>
 
-      {/* Ảnh sản phẩm */}
       <Image source={{ uri: product.image }} style={styles.productImage} />
 
-      {/* Thông tin sản phẩm */}
       <View style={styles.info}>
         <Text style={styles.productName}>{product.name}</Text>
 
-        {/* ✅ Thêm đánh giá sao */}
         <View style={styles.ratingContainer}>
           {renderStars(product.rating || 0)}
           <Text style={styles.ratingCount}>({product.reviewCount || 0})</Text>
         </View>
 
-        {/* Giá sản phẩm */}
         <View style={styles.priceContainer}>
           {product.discount > 0 && (
             <Text style={styles.originalPrice}>
@@ -75,16 +73,14 @@ export default function ProductCard({ product }: { product: any }) {
           </Text>
         </View>
 
-        {/* Nút thêm vào giỏ */}
         <TouchableOpacity style={styles.addToCart}>
-          <Text style={styles.addToCartText}>Add to cart</Text>
+          <Text style={styles.addToCartText}>Thêm vào giỏ</Text>
         </TouchableOpacity>
       </View>
     </TouchableOpacity>
   );
 }
 
-// Styles
 const styles = StyleSheet.create({
   card: {
     backgroundColor: "#fff",
