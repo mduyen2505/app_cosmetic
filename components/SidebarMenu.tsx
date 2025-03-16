@@ -9,6 +9,7 @@ import {
   TouchableWithoutFeedback,
 } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
+import { useRouter } from "expo-router"; // ✅ Sử dụng Expo Router để điều hướng
 
 const categories = [
   { id: "1", name: "Làm Sạch Da", subcategories: ["Tẩy Trang Mặt", "Sữa Rửa Mặt", "Tẩy Tế Bào Chết Da Mặt", "Toner/Nước Cân Bằng Da"] },
@@ -24,6 +25,7 @@ const categories = [
 export default function SidebarMenu({ isOpen, toggleSidebar }: { isOpen: boolean; toggleSidebar: () => void }) {
   const [expandedCategory, setExpandedCategory] = useState<string | null>(null);
   const translateX = new Animated.Value(isOpen ? 0 : -250);
+  const router = useRouter(); // ✅ Hook điều hướng của Expo Router
 
   useEffect(() => {
     Animated.timing(translateX, {
@@ -39,30 +41,45 @@ export default function SidebarMenu({ isOpen, toggleSidebar }: { isOpen: boolean
         <View style={styles.overlay}>
           <TouchableWithoutFeedback>
             <Animated.View style={[styles.sidebar, { transform: [{ translateX }] }]}>
-            <TouchableOpacity onPress={toggleSidebar} style={styles.closeButton}>
-  <MaterialIcons name="close" size={24} color="#ff758c" />  {/* ✅ Đổi thành icon X */}
-</TouchableOpacity>
-
+              <TouchableOpacity onPress={toggleSidebar} style={styles.closeButton}>
+                <MaterialIcons name="close" size={24} color="#ff758c" />
+              </TouchableOpacity>
 
               <ScrollView>
                 {categories.map((category) => (
                   <View key={category.id} style={styles.categoryContainer}>
                     <TouchableOpacity
                       style={styles.category}
-                      onPress={() => setExpandedCategory(expandedCategory === category.id ? null : category.id)}
+                      onPress={() => {
+                        toggleSidebar();
+                        router.push(`/category?typeId=${category.id}`); // ✅ Điều hướng đến màn hình category
+                      }}
                     >
                       <Text style={styles.categoryText}>{category.name}</Text>
-                      <MaterialIcons
-    name={expandedCategory === category.id ? "keyboard-arrow-down" : "keyboard-arrow-right"}
-    size={18}
-    color="black"
-  />                    </TouchableOpacity>
 
+                      <TouchableOpacity
+                        onPress={() => setExpandedCategory(expandedCategory === category.id ? null : category.id)}
+                      >
+                        <MaterialIcons
+                          name={expandedCategory === category.id ? "keyboard-arrow-down" : "keyboard-arrow-right"}
+                          size={24}
+                          color="black"
+                        />
+                      </TouchableOpacity>
+                    </TouchableOpacity>
+
+                    {/* Danh mục con */}
                     {expandedCategory === category.id &&
                       category.subcategories.map((sub) => (
-                        <Text key={sub} style={styles.subcategory}>
-                          {sub}
-                        </Text>
+                        <TouchableOpacity
+                          key={sub}
+                          onPress={() => {
+                            toggleSidebar();
+                            router.push(`/subcategory?subCategoryId=${sub}`); // ✅ Điều hướng đến màn hình subcategory
+                          }}
+                        >
+                          <Text style={styles.subcategory}>{sub}</Text>
+                        </TouchableOpacity>
                       ))}
                   </View>
                 ))}
@@ -84,8 +101,8 @@ const styles = StyleSheet.create({
     right: 0,
     width: "200%",
     height: "350%",
-    zIndex: 999, // Ensure overlay is above all other components
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    zIndex: 999,
+    backgroundColor: "rgba(0,0,0,0.5)",
   },
   sidebar: {
     position: "absolute",
@@ -98,16 +115,12 @@ const styles = StyleSheet.create({
     shadowColor: "#000",
     shadowOpacity: 0.2,
     shadowOffset: { width: 2, height: 2 },
-    elevation: 10, // Ensure sidebar is above other content
-    zIndex: 1000, // ✅ Đảm bảo Sidebar nằm trên cùng
+    elevation: 10,
+    zIndex: 1000,
   },
   closeButton: {
     alignItems: "flex-end",
     marginBottom: 10,
-  },
-  closeText: {
-    fontSize: 16,
-    color: "#ff758c",
   },
   categoryContainer: {
     marginBottom: 15,
@@ -115,20 +128,18 @@ const styles = StyleSheet.create({
   category: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
+    justifyContent: "space-between", // ✅ Căn chỉnh để icon nằm cuối
     paddingVertical: 10,
-    
   },
   categoryText: {
     fontSize: 16,
     fontWeight: "bold",
-    
   },
   subcategory: {
     fontSize: 14,
     paddingLeft: 20,
     color: "#666",
     marginBottom: 10,
-
   },
 });
+

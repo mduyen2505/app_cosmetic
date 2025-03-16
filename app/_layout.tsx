@@ -43,6 +43,8 @@ export default function Layout() {
       <Tabs.Screen name="myorder" options={{ title: "Orders" }} />
       <Tabs.Screen name="wishlist" options={{ title: "Wishlist" }} />
       <Tabs.Screen name="profile" options={{ title: "Profile" }} />
+      <Tabs.Screen name="category" options={{ href: null }} />
+      <Tabs.Screen name="subcategory" options={{ href: null }} />
     </Tabs>
   );
 }
