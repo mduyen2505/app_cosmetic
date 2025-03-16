@@ -1,58 +1,93 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
   Image,
   FlatList,
+  ActivityIndicator,
   StyleSheet,
-  Dimensions,
   TouchableOpacity,
+  Dimensions,
 } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
-
+import { useRouter } from "expo-router"; // ✅ Điều hướng với Expo Router
+import { BRANDS } from "../api/apiconfig"; // ✅ Import API endpoint
 
 const { width } = Dimensions.get("window");
 
-// Dữ liệu giả lập danh sách thương hiệu
-const brands = [
-  { id: "1", title: "L'Oreal", image: "https://example.com/loreal.png" },
-  { id: "2", title: "Cocoon", image: "https://example.com/cocoon.png" },
-];
+// Định nghĩa kiểu dữ liệu cho thương hiệu
+interface Brand {
+  _id: string;
+  title: string;
+  image: string;
+}
 
-// ✅ Component hiển thị thương hiệu
-const BrandItem = ({ item }: { item: { id: string; title: string; image: string } }) => {
-  const router = useRouter(); // ✅ Sử dụng điều hướng
+const BrandList = () => {
+  const [brands, setBrands] = useState<Brand[]>([]);
+  const [loading, setLoading] = useState(true);
+  const router = useRouter();
 
-  return (
+  useEffect(() => {
+    const fetchBrands = async () => {
+      try {
+        console.log("Fetching brands from:", BRANDS);
+        const response = await fetch(BRANDS);
+        if (!response.ok) throw new Error(`Lỗi HTTP! Status: ${response.status}`);
+
+        const data = await response.json();
+        if (data && Array.isArray(data.brands)) {
+          setBrands(data.brands);
+        } else {
+          console.error("Dữ liệu API không đúng:", data);
+        }
+      } catch (error) {
+        console.error("Lỗi khi gọi API thương hiệu:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchBrands();
+  }, []);
+
+  // 🔥 Component hiển thị từng thương hiệu
+  const renderBrandItem = ({ item }: { item: Brand }) => (
     <TouchableOpacity
       style={styles.brandContainer}
-      onPress={() => router.push(`/brand?brandId=${item.id}`)} // 🔥 Điều hướng đến trang danh sách sản phẩm theo thương hiệu
+      onPress={() => router.push(`/brand?brandId=${item._id}`)}
     >
-      <Image source={{ uri: item.image }} style={styles.brandImage} />
+      <Image
+        source={{
+          uri: item.image.startsWith("http")
+            ? item.image
+            : `http://172.20.10.4:3000/images/${item.image}`,                            
+
+        }}
+        style={styles.brandImage}
+      />
       <Text style={styles.brandTitle}>{item.title}</Text>
     </TouchableOpacity>
   );
-};
 
-// ✅ Component chính hiển thị danh sách thương hiệu
-export default function BrandList() {
   return (
     <View style={styles.container}>
       <Text style={styles.header}>Brands</Text>
 
-      <FlatList
-        data={brands}
-        keyExtractor={(item) => item.id}
-        horizontal // ✅ Trượt ngang
-        showsHorizontalScrollIndicator={false} // Ẩn thanh cuộn
-        renderItem={({ item }) => <BrandItem item={item} />}
-      />
+      {loading ? (
+        <ActivityIndicator size="large" color="#ff758c" />
+      ) : (
+        <FlatList
+          data={brands}
+          keyExtractor={(item) => item._id}
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          renderItem={renderBrandItem}
+        />
+      )}
     </View>
   );
-}
+};
 
-// CSS Styles
+// 🎨 **Styles**
 const styles = StyleSheet.create({
   container: {
     paddingVertical: 10,
@@ -66,19 +101,19 @@ const styles = StyleSheet.create({
     color: "#333",
   },
   brandContainer: {
-    width: width * 0.25, // ✅ Nhỏ gọn theo tỷ lệ màn hình
+    width: width * 0.25,
     backgroundColor: "white",
     padding: 10,
     borderRadius: 8,
     alignItems: "center",
-    marginRight: 10, // ✅ Tạo khoảng cách giữa các item
+    marginRight: 10,
     shadowColor: "#000",
     shadowOpacity: 0.1,
     shadowOffset: { width: 2, height: 2 },
     elevation: 2,
   },
   brandImage: {
-    width: 50,
+    width: 100,
     height: 50,
     resizeMode: "contain",
   },
@@ -89,3 +124,5 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
 });
+
+export default BrandList;
