@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -9,67 +9,158 @@ import {
   SafeAreaView,
   TextInput,
   Modal,
-  Alert
+  Alert,
+  ActivityIndicator,
 } from "react-native";
 import { FontAwesome } from "@expo/vector-icons";
+import axios from "axios";
+import { useRoute } from "@react-navigation/native";
+import { getProductDetails, UPDATE_CART, WISHLIST } from "../api/apiconfig";
+import { useNavigation } from "@react-navigation/native";
+import { Ionicons } from "@expo/vector-icons";
 
-const dummyProduct = {
-  id: "1",
-  name: "Nước Tẩy Trang L'Oreal Làm Sạch Sâu Trang Điểm",
-  image: "https://via.placeholder.com/400",
-  price: 184000,
-  discount: 10,
-  promotionPrice: 165600,
-  description: "Tẩy trang hiệu quả, phù hợp với mọi loại da.",
-  averageRating: 4.3,
-  totalReviews: 4,
-  ingredients: "Aqua, Cyclopentasiloxane, Isohexadecane, Sodium Chloride.",
-  usageInstructions: "Lắc đều trước khi sử dụng. Thấm bông tẩy trang và lau nhẹ lên mặt.",
-  reviews: [
-    { id: "r1", user: "Unknown User", rating: 5, comment: "Tốt" },
-    { id: "r2", user: "Test", rating: 3, comment: "Cũng ổn" },
-  ],
-};
+// ✅ Định nghĩa kiểu dữ liệu sản phẩm
+interface Product {
+  id: string;
+  name: string;
+  image: string;
+  price: number;
+  discount: number;
+  promotionPrice: number;
+  description: string;
+  averageRating: number;
+  totalReviews: number;
+  ingredients: string;
+  usageInstructions: string;
+  reviews: { id: string; user: string; rating: number; comment: string }[];
+}
 
 export default function ProductDetail() {
-  const [product] = useState(dummyProduct);
-  const [quantity, setQuantity] = useState(1);
-  const [isFavorite, setIsFavorite] = useState(false);
+  const route = useRoute();
+  const { productId } = route.params as { productId: string };
+  const navigation = useNavigation();
+
+  const [product, setProduct] = useState<Product | null>(null);
+  const [quantity, setQuantity] = useState<number>(1);
+  const [isFavorite, setIsFavorite] = useState<boolean>(false);
+  const [loading, setLoading] = useState<boolean>(true);
   const [selectedTab, setSelectedTab] = useState("ingredients");
-  const [showReviewModal, setShowReviewModal] = useState(false);
-  const [comment, setComment] = useState("");
-  const [rating, setRating] = useState(5);
-  const [title, setTitle] = useState("");
+  const [showReviewModal, setShowReviewModal] = useState<boolean>(false);
+  const [rating, setRating] = useState<number>(5);
+  const [comment, setComment] = useState<string>("");
+  const [reviews, setReviews] = useState(product?.reviews || []);
 
-  const handleReviewSubmit = () => {
-    Alert.alert("Cảm ơn bạn đã đánh giá!", "Chúng tôi đã nhận được đánh giá của bạn.");
-    setShowReviewModal(false);
+  // ✅ Fetch dữ liệu sản phẩm từ API
+  useEffect(() => {
+    const fetchProduct = async () => {
+      try {
+        const response = await axios.get(getProductDetails(productId));
+        setProduct(response.data);
+        setReviews(response.data.reviews || []);
+      } catch (error) {
+        Alert.alert("Lỗi", "Không thể tải sản phẩm. Vui lòng thử lại sau!");
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchProduct();
+  }, [productId]);
+  // ✅ Xử lý thêm vào giỏ hàng
+  const handleAddToCart = async () => {
+    try {
+      await axios.post(UPDATE_CART, { productId, action: "increase" });
+      Alert.alert("Thành công", "Sản phẩm đã được thêm vào giỏ hàng!");
+    } catch (error) {
+      Alert.alert("Lỗi", "Không thể thêm vào giỏ hàng. Vui lòng thử lại!");
+    }
   };
 
-
-  const handleAddToCart = () => {
-    Alert.alert("Thêm vào giỏ hàng", "Sản phẩm đã được thêm vào giỏ hàng!");
+  // ✅ Xử lý thêm vào wishlist
+  const handleToggleFavorite = async () => {
+    try {
+      setIsFavorite(!isFavorite);
+      await axios.post(WISHLIST, { productId });
+      Alert.alert("Thành công", isFavorite ? "Đã xóa khỏi danh sách yêu thích!" : "Đã thêm vào danh sách yêu thích!");
+    } catch (error) {
+      Alert.alert("Lỗi", "Không thể cập nhật danh sách yêu thích!");
+    }
   };
 
-  const handleToggleFavorite = () => {
-    setIsFavorite(!isFavorite);
+  // ✅ Xử lý gửi đánh giá sản phẩm
+  const handleReviewSubmit = async () => {
+    if (!comment.trim()) {
+      Alert.alert("Lỗi", "Vui lòng nhập nội dung đánh giá!");
+      return;
+    }
+
+    try {
+      const response = await axios.post(
+        `http://172.20.10.4:3000/api/reviews/`, // 🔥 API Web của bạn
+        { productId, rating, comment },
+        { headers: { Authorization: `Bearer YOUR_AUTH_TOKEN` } }
+      );
+
+      if (response.data.message === "Đánh giá thành công!") {
+        Alert.alert("Thành công", "Cảm ơn bạn đã đánh giá!");
+        setShowReviewModal(false);
+        setComment("");
+        setRating(5);
+
+        // 🔥 Cập nhật danh sách đánh giá mới
+        setReviews((prevReviews) => [
+          ...prevReviews,
+          { id: new Date().toISOString(), user: "Bạn", rating, comment },
+        ]);
+      }
+    } catch (error) {
+      Alert.alert("Lỗi", "Bạn đã đánh giá sản phẩm này rồi!");
+    }
   };
+
+  if (loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#ff758c" />
+        <Text>Đang tải sản phẩm...</Text>
+      </View>
+    );
+  }
+
+  if (!product) {
+    return (
+      <View style={styles.errorContainer}>
+        <Text style={styles.errorText}>Sản phẩm không tồn tại hoặc đã bị xóa</Text>
+      </View>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.safeContainer}>
+     <View style={styles.header}>
+     <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+     <Ionicons name="arrow-back" size={24} color="black" />
+     </TouchableOpacity>
+        
+      </View>
       <ScrollView contentContainerStyle={styles.container}>
-      <View style={styles.imageContainer}>
-  <Image source={{ uri: product.image }} style={styles.productImage} />
-
-  {/* Nút Yêu thích Nổi trên Hình */}
-  <TouchableOpacity onPress={handleToggleFavorite} style={styles.favoriteButton}>
+        <View style={styles.imageContainer}>
+        <Image
+  source={{
+    uri: product.image.startsWith("http")
+      ? product.image
+      : `http://172.20.10.4:3000/images/${product.image}`,
+  }}
+  style={styles.productImage}
+/>
+{/* Nút Yêu thích Nổi trên Hình */}
+<TouchableOpacity onPress={handleToggleFavorite} style={styles.favoriteButton}>
     {isFavorite ? (
       <FontAwesome name="heart" size={30} color="red" />
     ) : (
       <FontAwesome name="heart-o" size={30} color="gray" />
     )}
   </TouchableOpacity>
-</View>
+        </View>
 
         <View style={styles.infoBox}>
           <Text style={styles.productName}>{product.name}</Text>
@@ -90,84 +181,102 @@ export default function ProductDetail() {
         </View>
 
         <View style={styles.tabs}>
-          {["ingredients", "instructions", "reviews"].map((tab) => (
-            <TouchableOpacity key={tab} onPress={() => setSelectedTab(tab)}>
-              <Text style={[styles.tab, selectedTab === tab && styles.activeTab]}>
-                {tab === "ingredients" ? "Thành phần" : tab === "instructions" ? "Hướng dẫn" : "Đánh giá"}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
+        {["ingredients", "instructions", "reviews"].map((tab) => (
+          <TouchableOpacity key={tab} onPress={() => setSelectedTab(tab)}>
+            <Text style={[styles.tab, selectedTab === tab && styles.activeTab]}>
+              {tab === "ingredients" ? "Thành phần" : tab === "instructions" ? "Hướng dẫn" : "Đánh giá"}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </View>
 
-        <View style={styles.tabContent}>
-          {selectedTab === "ingredients" && <Text>{product.ingredients}</Text>}
-          {selectedTab === "instructions" && <Text>{product.usageInstructions}</Text>}
-          {selectedTab === "reviews" && product.reviews.map((review) => (
-            <View key={review.id} style={styles.reviewItem}>
-              <Text style={styles.reviewUser}>{review.user}</Text>
-              <Text style={styles.reviewRating}>⭐ {review.rating}</Text>
-              <Text>{review.comment}</Text>
-            </View>
-          ))}
-        </View>
+      {/* Nội dung tab */}
+      <View style={styles.tabContent}>
+        {selectedTab === "ingredients" && (
+          <Text>{product.ingredients || "Chưa có thông tin thành phần"}</Text>
+        )}
+
+        {selectedTab === "instructions" && (
+          <Text>{product.usageInstructions || "Chưa có hướng dẫn sử dụng"}</Text>
+        )}
 
         {selectedTab === "reviews" && (
+          reviews.length > 0 ? (
+            reviews.map((review) => (
+              <View key={review.id} style={styles.reviewItem}>
+                <Text style={styles.reviewUser}>{review.user}</Text>
+                <Text style={styles.reviewRating}>⭐ {review.rating}</Text>
+                <Text>{review.comment}</Text>
+              </View>
+            ))
+          ) : (
+            <Text>Chưa có đánh giá nào</Text>
+          )
+        )}
+      </View>
+
+     {/* Nút viết đánh giá */}
+     {selectedTab === "reviews" && (
           <TouchableOpacity onPress={() => setShowReviewModal(true)} style={styles.reviewButton}>
             <Text style={styles.buttonText}>Viết đánh giá</Text>
           </TouchableOpacity>
         )}
-        <Modal visible={showReviewModal} transparent animationType="fade">
-          <View style={styles.modalContainer}>
-            <View style={styles.modalContent}>
-              {/* Nút đóng modal */}
-              <TouchableOpacity onPress={() => setShowReviewModal(false)} style={styles.closeButton}>
-                <Text style={styles.closeText}>✖</Text>
-              </TouchableOpacity>
-
-              {/* Tiêu đề modal */}
-              <Text style={styles.modalTitle}>Write a review</Text>
-
-              {/* Hình ảnh & tên sản phẩm */}
-              <View style={styles.productInfo}>
-                <Image source={{ uri: product.image }} style={styles.productImageSmall} />
-                <Text style={styles.productName}>{product.name}</Text>
-              </View>
-
-              {/* Chọn sao đánh giá */}
-              <View style={styles.starContainer}>
-                {[1, 2, 3, 4, 5].map((star) => (
-                  <TouchableOpacity key={star} onPress={() => setRating(star)}>
-                    <FontAwesome name="star" size={30} color={star <= rating ? "#ff758c" : "#ddd"} />
-                  </TouchableOpacity>
-                ))}
-              </View>
-
-              {/* Nhập tiêu đề đánh giá */}
-              <TextInput
-                style={styles.input}
-                placeholder="Review Title"
-                value={title}
-                onChangeText={setTitle}
-              />
-
-              {/* Nhập nội dung đánh giá */}
-              <TextInput
-                style={[styles.input, styles.textArea]}
-                placeholder="Write your review..."
-                multiline
-                numberOfLines={4}
-                value={comment}
-                onChangeText={setComment}
-              />
-
-              {/* Nút gửi đánh giá */}
-              <TouchableOpacity style={styles.submitButton} onPress={handleReviewSubmit}>
-                <Text style={styles.buttonText}>Gửi đánh giá</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </Modal>
       </ScrollView>
+
+      {/* Modal đánh giá */}
+      <Modal visible={showReviewModal} transparent animationType="fade">
+        <View style={styles.modalContainer}>
+          <View style={styles.modalContent}>
+            {/* Nút đóng modal */}
+            <TouchableOpacity onPress={() => setShowReviewModal(false)} style={styles.closeButton}>
+              <Text style={styles.closeText}>✖</Text>
+            </TouchableOpacity>
+
+            {/* Tiêu đề modal */}
+            <Text style={styles.modalTitle}>Viết đánh giá</Text>
+
+            {/* Hình ảnh & tên sản phẩm */}
+            <View style={styles.productInfo}>
+            <Image
+                source={{
+                  uri: product.image.startsWith("http")
+                    ? product.image
+                    : `http://172.20.10.4:3000/images/${product.image}`,
+                }}
+                style={styles.productImageSmall}
+              />              <Text style={styles.modalProductName}>{product.name}</Text>
+
+            </View>
+
+            {/* Chọn sao đánh giá */}
+            <View style={styles.starContainer}>
+              {[1, 2, 3, 4, 5].map((star) => (
+                <TouchableOpacity key={star} onPress={() => setRating(star)}>
+                  <FontAwesome name="star" size={30} color={star <= rating ? "#ff758c" : "#ddd"} />
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            
+
+            {/* Nhập nội dung đánh giá */}
+            <TextInput
+              style={[styles.input, styles.textArea]}
+              placeholder="Nội dung đánh giá..."
+              multiline
+              numberOfLines={4}
+              value={comment}
+              onChangeText={setComment}
+            />
+
+            {/* Nút gửi đánh giá */}
+            <TouchableOpacity style={styles.submitButton} onPress={handleReviewSubmit}>
+              <Text style={styles.buttonText}>Gửi đánh giá</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+      {/* Thanh điều khiển ở dưới cùng */}
       <View style={styles.footer}>
         <View style={styles.quantityContainer}>
           <TouchableOpacity onPress={() => setQuantity(Math.max(1, quantity - 1))}>
@@ -184,10 +293,10 @@ export default function ProductDetail() {
           <Text style={styles.buttonText}>Thêm vào giỏ</Text>
         </TouchableOpacity>
       </View>
-
     </SafeAreaView>
   );
 }
+
 
 const styles = StyleSheet.create({
   safeContainer: { flex: 1, backgroundColor: "#fff" },
@@ -283,7 +392,15 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     alignSelf: "center",
     marginTop: 10,
+    marginBottom: 80, // ✅ Thêm khoảng trống để tránh bị footer che
   },
+  modalTitle: {
+    fontSize: 13, // ✅ Giảm kích thước chữ
+    fontWeight: "bold",
+    marginVertical: 10,
+    textAlign: "center",
+  },
+  
 
   // 🔥 Modal đánh giá
   modalContainer: {
@@ -308,10 +425,16 @@ const styles = StyleSheet.create({
     fontSize: 20,
     color: "#888",
   },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: "bold",
-    marginVertical: 10,
+  
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 15,
+    backgroundColor: "#fff", // Giữ nền trắng hoặc đổi màu theo ý muốn
+    elevation: 3, // Tạo hiệu ứng bóng nổi lên
+  },
+  backButton: {
+    padding: 10,
   },
 
   // 🔥 Thông tin sản phẩm trong modal
@@ -325,6 +448,7 @@ const styles = StyleSheet.create({
     height: 50,
     marginRight: 10,
     borderRadius: 5,
+    
   },
 
   // 🔥 Chọn sao đánh giá
@@ -345,7 +469,7 @@ const styles = StyleSheet.create({
     marginVertical: 8,
   },
   textArea: {
-    height: 80,
+    height: 60,
     textAlignVertical: "top",
   },
 
@@ -377,6 +501,31 @@ const styles = StyleSheet.create({
     fontSize: 14,
     marginVertical: 5,
   },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#fff",
+  },
+
+  // ✅ Sửa lỗi thiếu `errorContainer`
+  errorContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 20,
+  },
+  errorText: {
+    fontSize: 18,
+    color: "red",
+    textAlign: "center",
+  },
+  modalProductName: {
+    fontSize: 13, // ✅ Giảm kích thước chữ trong modal
+    fontWeight: "bold",
+    marginBottom: 2, // ✅ Tạo khoảng cách giữa các phần tử
+  },
+
 
 
 });
