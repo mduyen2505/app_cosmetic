@@ -60,6 +60,12 @@ export default function Layout() {
       <Tabs.Screen name="subcategory" options={{ href: null }} />
       <Tabs.Screen name="productdetail" options={{ href: null }} />
       <Tabs.Screen name="brand" options={{ href: null }} />
+      <Tabs.Screen name="register" options={{ href: null }} />
+      <Tabs.Screen name="login" options={{ href: null }} />
+      <Tabs.Screen name="verifyotp" options={{ href: null }} />
+
+
+
     </Tabs>
   );
 }
