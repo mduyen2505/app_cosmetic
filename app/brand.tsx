@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -10,68 +10,70 @@ import {
   StatusBar,
   TouchableOpacity,
 } from "react-native";
-import { useLocalSearchParams, useRouter } from "expo-router"; // ✅ Lấy params & điều hướng
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import ProductCard from "../components/ProductCard"; // ✅ Dùng lại ProductCard
-
-// 🔥 Dữ liệu giả lập thương hiệu
-const dummyBrands = {
-  "1": {
-    id: "1",
-    title: "L'Oreal",
-    image: "https://example.com/loreal.png",
-    description: "L'Oreal - thương hiệu mỹ phẩm hàng đầu thế giới.",
-  },
-  "2": {
-    id: "2",
-    title: "Cocoon",
-    image: "https://example.com/cocoon.png",
-    description: "Cocoon - mỹ phẩm thiên nhiên an toàn cho da.",
-  },
-};
-
-// 🔥 Dữ liệu giả lập sản phẩm
-const dummyProducts = Array.from({ length: 20 }, (_, index) => ({
-  id: index.toString(),
-  name: `Sản phẩm ${index + 1}`,
-  price: 200000 + index * 10000,
-  discount: index % 2 === 0 ? 15 : 0,
-  promotionPrice: 200000 + index * 10000 - 15000,
-  rating: Math.floor(Math.random() * 5) + 1,
-  reviewCount: Math.floor(Math.random() * 50),
-  image: "https://via.placeholder.com/150",
-}));
+import ProductCard from "../components/ProductCard";
+import { getProductsbyBrand, getBrandDetails } from "../api/apiconfig";
 
 const BrandScreen = () => {
   const { brandId } = useLocalSearchParams();
-  const router = useRouter(); // ✅ Điều hướng quay lại
+  const router = useRouter();
 
-  if (!brandId) {
-    return <Text>Không tìm thấy thương hiệu!</Text>;
-  }
+  const [brand, setBrand] = useState<{ title: string; image: string; description: string } | null>(
+    null
+  );
+  const [products, setProducts] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  // Lấy dữ liệu thương hiệu
-  const brand = dummyBrands[brandId as keyof typeof dummyBrands];
-  const [products, setProducts] = useState(dummyProducts);
-  const [loading, setLoading] = useState(false);
+  useEffect(() => {
+    const fetchBrandDetails = async () => {
+      try {
+        const response = await fetch(getBrandDetails(brandId as string));
+        if (!response.ok) throw new Error(`Lỗi HTTP! Status: ${response.status}`);
+        const data = await response.json();
+        setBrand(data.brand);
+      } catch (error) {
+        console.error("Lỗi khi lấy thông tin thương hiệu:", error);
+      }
+    };
+
+    const fetchProducts = async () => {
+      try {
+        const response = await fetch(getProductsbyBrand(brandId as string));
+        if (!response.ok) throw new Error(`Lỗi HTTP! Status: ${response.status}`);
+        const data = await response.json();
+        setProducts(data);
+      } catch (error) {
+        console.error("Lỗi khi lấy sản phẩm theo thương hiệu:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchBrandDetails();
+    fetchProducts();
+  }, [brandId]);
 
   return (
     <SafeAreaView style={styles.safeContainer}>
-      <StatusBar barStyle="dark-content" backgroundColor="#fff" /> 
-
-      {/* 🔥 Header có nút quay lại */}
+      <StatusBar barStyle="dark-content" backgroundColor="#fff" />
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color="black" />
         </TouchableOpacity>
-       
       </View>
 
       <View style={styles.container}>
-        {/* 🔥 Hiển thị thông tin thương hiệu */}
         {brand && (
           <View style={styles.brandHeader}>
-            <Image source={{ uri: brand.image }} style={styles.brandLogo} />
+            <Image
+              source={{
+                uri: brand.image.startsWith("http")
+                  ? brand.image
+                  : `http://172.20.10.4:3000/images/${brand.image}`,
+              }}
+              style={styles.brandLogo}
+            />
             <View style={styles.brandInfo}>
               <Text style={styles.brandTitle}>{brand.title}</Text>
               <Text style={styles.brandDescription}>{brand.description}</Text>
@@ -79,17 +81,16 @@ const BrandScreen = () => {
           </View>
         )}
 
-        {/* 🔥 Hiển thị danh sách sản phẩm */}
         {loading ? (
           <ActivityIndicator size="large" color="#ff758c" />
         ) : (
           <FlatList
             data={products}
-            keyExtractor={(item) => item.id}
+            keyExtractor={(item) => item._id}
             numColumns={2}
-            columnWrapperStyle={styles.row} // ✅ Căn đều các cột
+            columnWrapperStyle={styles.row}
             renderItem={({ item }) => <ProductCard product={item} />}
-            showsVerticalScrollIndicator={false} // ✅ Ẩn thanh trượt
+            showsVerticalScrollIndicator={false}
           />
         )}
       </View>
@@ -97,7 +98,6 @@ const BrandScreen = () => {
   );
 };
 
-// 🎨 **Styles**
 const styles = StyleSheet.create({
   safeContainer: {
     flex: 1,
@@ -106,7 +106,6 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
     paddingHorizontal: 15,
     paddingVertical: 15,
     backgroundColor: "#fff",
@@ -117,19 +116,15 @@ const styles = StyleSheet.create({
     width: 40,
     alignItems: "center",
   },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: "bold",
-  },
   container: {
     flex: 1,
-    paddingHorizontal: 25, // ✅ Căn đều hai bên
+    paddingHorizontal: 25,
   },
   brandHeader: {
     flexDirection: "row",
     alignItems: "center",
     padding: 15,
-    backgroundColor: "#E8E8E8", // ✅ Màu nền nổi bật hơn
+    backgroundColor: "#E8E8E8",
     borderRadius: 10,
     marginBottom: 15,
   },
