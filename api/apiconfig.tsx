@@ -43,6 +43,7 @@ export const GET_USER_INFO = `${BASE_URL}/users`;
 export const UPDATE_USER_INFO = `${BASE_URL}/users`;
 
 // 🎟️ API mã giảm giá
+export const getCoupons = `${BASE_URL}/coupons`;
 export const COUPONS_API = `${BASE_URL}/coupons`;
 export const CHECK_COUPON_API = `${BASE_URL}/coupons/check-coupon`;
 

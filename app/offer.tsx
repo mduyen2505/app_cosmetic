@@ -10,56 +10,61 @@ import {
   ScrollView,
   SafeAreaView,
 } from "react-native";
-import { useNavigation } from "@react-navigation/native"; // ✅ Điều hướng trang
-import { Ionicons } from "@expo/vector-icons"; // ✅ Nút quay về
-import ProductCard from "../components/ProductCard"; // ✅ Sử dụng lại component sản phẩm
+import { useNavigation } from "@react-navigation/native";
+import { Ionicons } from "@expo/vector-icons";
+import ProductCard from "../components/ProductCard";
+import { getCoupons, ALL_PRODUCTS } from "../api/apiconfig";
 
-// 🔹 Dữ liệu giả lập cho voucher (Ưu đãi đặc biệt)
-const dummyVouchers = [
-  {
-    id: "1",
-    image: "https://via.placeholder.com/100",
-    discount: 10,
-    description: "Giảm 10% cho đơn hàng trên 500,000 VND",
-    expiry: "31/12/2025",
-  },
-  {
-    id: "2",
-    image: "https://via.placeholder.com/100",
-    discount: 20,
-    description: "Giảm 20% khi mua trên 200,000 VND",
-    expiry: "08/03/2025",
-  },
-  {
-    id: "3",
-    image: "https://via.placeholder.com/100",
-    discount: 50,
-    description: "Giảm 50% khi mua từ 700,000 VND",
-    expiry: "21/05/2025",
-  },
-];
+// ✅ Định nghĩa kiểu dữ liệu voucher
+interface Voucher {
+  _id: string;
+  image: string;
+  discount: number;
+  description: string;
+  expiry: string;
+}
 
-// 🔹 Dữ liệu giả lập cho sản phẩm giảm giá
-const dummyProducts = Array.from({ length: 10 }, (_, index) => ({
-  _id: String(index + 1),
-  name: `Sản phẩm ${index + 1}`,
-  image: "https://via.placeholder.com/150",
-  discount: 10,
-  price: 200000,
-  promotionPrice: 180000,
-  rating: Math.floor(Math.random() * 5) + 1,
-  reviewCount: Math.floor(Math.random() * 50),
-}));
+// ✅ Định nghĩa kiểu dữ liệu sản phẩm
+interface Product {
+  _id: string;
+  name: string;
+  price: number;
+  discount?: number;
+  promotionPrice?: number;
+  rating?: number;
+  reviewCount?: number;
+  image: string;
+}
 
 const PromoScreen = () => {
-  const [loading, setLoading] = useState(true);
-  const [products, setProducts] = useState(dummyProducts);
-  const [vouchers, setVouchers] = useState(dummyVouchers);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [vouchers, setVouchers] = useState<Voucher[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
   const navigation = useNavigation();
 
   useEffect(() => {
-    // 🔹 Giả lập thời gian tải dữ liệu
-    setTimeout(() => setLoading(false), 1000);
+    const fetchData = async () => {
+      try {
+        // ✅ Gọi API lấy danh sách voucher từ `getCoupons`
+        const voucherRes = await fetch(getCoupons);
+        const voucherData = await voucherRes.json();
+        setVouchers(voucherData.data || []);
+
+        // ✅ Gọi API lấy danh sách sản phẩm giảm giá
+        const productRes = await fetch(ALL_PRODUCTS); // Sử dụng ALL_PRODUCTS để lấy tất cả sản phẩm
+        const productData = await productRes.json();
+        const discountedProducts = Array.isArray(productData)
+        ? productData.filter((product) => product.discount && product.discount > 0)
+        : [];
+      setProducts(discountedProducts);
+      } catch (error) {
+        console.error("Lỗi khi tải dữ liệu:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
   }, []);
 
   if (loading) {
@@ -78,6 +83,7 @@ const PromoScreen = () => {
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color="black" />
         </TouchableOpacity>
+        <Text style={styles.headerTitle}>Ưu Đãi</Text>
       </View>
 
       <ScrollView style={styles.container}>
@@ -88,13 +94,13 @@ const PromoScreen = () => {
         <FlatList
           horizontal
           data={vouchers}
-          keyExtractor={(item) => item.id}
+          keyExtractor={(item) => item._id}
           renderItem={({ item }) => (
             <View style={styles.voucherCard}>
-              <Image source={{ uri: item.image }} style={styles.voucherLogo} />
+              <Image source={{ uri: `http://172.20.10.4:3000/images/${item.image}` }} style={styles.voucherLogo} />
               <Text style={styles.voucherDiscount}>Giảm {item.discount}%</Text>
               <Text style={styles.voucherDescription}>{item.description}</Text>
-              <Text style={styles.voucherExpiry}>Hết hạn: {item.expiry}</Text>
+              <Text style={styles.voucherExpiry}>Hết hạn: {new Date(item.expiry).toLocaleDateString()}</Text>
             </View>
           )}
           contentContainerStyle={styles.voucherContainer}
@@ -103,20 +109,26 @@ const PromoScreen = () => {
         {/* 🔹 Tiêu đề Sản phẩm */}
         <Text style={styles.productTitle}>🔥 SẢN PHẨM GIẢM GIÁ 🔥</Text>
 
-        {/* 🔹 Danh sách Sản phẩm (Sử dụng lại ProductCard.tsx) */}
-        <FlatList
-          data={products}
-          numColumns={2}
-          keyExtractor={(item) => item._id}
-          renderItem={({ item }) => <ProductCard product={item} />}
-          contentContainerStyle={styles.productsContainer}
-        />
+        {/* 🔹 Danh sách Sản phẩm */}
+        {products.length > 0 ? (
+          <FlatList
+            data={products}
+            numColumns={2}
+            keyExtractor={(item) => item._id}
+            renderItem={({ item }) => <ProductCard product={item} />}
+            contentContainerStyle={styles.productsContainer}
+          />
+        ) : (
+          <Text style={{ textAlign: "center", fontSize: 16, color: "#888", marginVertical: 20 }}>
+            Không có sản phẩm giảm giá nào.
+          </Text>
+        )}
       </ScrollView>
     </SafeAreaView>
   );
 };
 
-// 🔹 CSS cho React Native
+// ✅ CSS cho React Native
 const styles = StyleSheet.create({
   safeContainer: { flex: 1, backgroundColor: "#fff" },
 
@@ -129,14 +141,13 @@ const styles = StyleSheet.create({
     backgroundColor: "#fff",
     elevation: 2, // ✅ Tạo hiệu ứng nổi cho header
   },
-  backButton: {
-    padding: 10,
-  },
+  backButton: { padding: 10 },
+  headerTitle: { fontSize: 18, fontWeight: "bold", marginLeft: 10 },
 
   container: {
     flex: 1,
     backgroundColor: "#fff",
-    paddingHorizontal: 25, // ✅ Căn đều hai bên
+    paddingHorizontal: 25,
   },
 
   loadingContainer: {
@@ -174,8 +185,9 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: "#555",
     textAlign: "center",
-    flexShrink: 1, // ✅ Giữ nguyên bố cục nếu text dài
+    flexShrink: 1,
   },
+
   voucherExpiry: { fontSize: 12, color: "#888", marginTop: 5 },
 
   // 🔹 Product Style
