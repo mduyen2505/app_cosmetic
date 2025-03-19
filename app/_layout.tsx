@@ -63,6 +63,11 @@ export default function Layout() {
       <Tabs.Screen name="register" options={{ href: null }} />
       <Tabs.Screen name="login" options={{ href: null }} />
       <Tabs.Screen name="verifyotp" options={{ href: null }} />
+      <Tabs.Screen name="update_info" options={{ href: null }} />
+      <Tabs.Screen name="order_status" options={{ href: null }} />
+      <Tabs.Screen name="information" options={{ href: null }} />
+
+
 
 
 

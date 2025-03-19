@@ -1,145 +1,209 @@
-import React, { useState } from "react";
-import { View, Text, FlatList, Image, TouchableOpacity, StyleSheet, SafeAreaView } from "react-native";
+import React, { useState, useEffect } from "react";
+import {
+  View,
+  Text,
+  FlatList,
+  Image,
+  TouchableOpacity,
+  StyleSheet,
+  SafeAreaView,
+  Alert,
+  ActivityIndicator,
+} from "react-native";
+import axios from "axios";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Ionicons } from "@expo/vector-icons";
-import { useNavigation } from "@react-navigation/native"; // ✅ Để quay về màn hình trước
+import { useRouter } from "expo-router";
 
-// Dữ liệu giả cho giỏ hàng
-const fakeCartData = [
-  {
-    id: "1",
-    name: "Sữa rửa mặt Cetaphil",
-    price: 150000,
-    oldPrice: 200000,
-    quantity: 2,
-    image: "https://example.com/cetaphil.jpg",
-  },
-  {
-    id: "2",
-    name: "Kem dưỡng ẩm CeraVe",
-    price: 300000,
-    oldPrice: 350000,
-    quantity: 1,
-    image: "https://example.com/cerave.jpg",
-  },
-  {
-    id: "3",
-    name: "Kem chống nắng La Roche-Posay",
-    price: 350000,
-    quantity: 1,
-    image: "https://example.com/la-roche-posay.jpg",
-  },
-];
+// Import API Endpoints
+import {
+  GET_CART,
+  UPDATE_CART,
+  DELETE_CART_ITEM,
+  CLEAR_CART,
+} from "../api/apiconfig";
 
-const CartScreen = () => {
-  const [cartItems, setCartItems] = useState(fakeCartData);
-  const navigation = useNavigation(); // ✅ Khai báo navigation để quay về
+const CartScreen: React.FC = () => {
+  const [cartItems, setCartItems] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const router = useRouter(); // ✅ Thay useNavigation bằng useRouter
 
+  // ✅ Lấy dữ liệu giỏ hàng từ API
+  useEffect(() => {
+    const fetchCart = async () => {
+      try {
+        const token = await AsyncStorage.getItem("token");
+        if (!token) {
+          Alert.alert("Lỗi", "Bạn cần đăng nhập để xem giỏ hàng.");
+          router.push("/login");
+          return;
+        }
 
-  // Hàm tăng số lượng sản phẩm
-  const handleIncrease = (id) => {
-    setCartItems((prev) =>
-      prev.map((item) => (item.id === id ? { ...item, quantity: item.quantity + 1 } : item))
-    );
+        const response = await axios.get(GET_CART, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        if (response.data && response.data.products) {
+          AsyncStorage.setItem("cart", JSON.stringify({ _id: response.data._id }));
+          const formattedCartItems = response.data.products.map((product: any) => ({
+            id: product.productId._id,
+            name: product.productId.name,
+            price: product.productId.promotionPrice,
+            oldPrice: product.productId.discount
+              ? product.productId.promotionPrice / (1 - product.productId.discount / 100)
+              : null,
+            quantity: product.quantity,
+            image: product.productId.image.startsWith("http")
+              ? product.productId.image
+              : `http://localhost:3000/images/${product.productId.image}`,
+          }));
+
+          setCartItems(formattedCartItems);
+        } else {
+          setCartItems([]);
+        }
+      } catch (error) {
+        console.error("Lỗi khi lấy giỏ hàng:", error);
+        setCartItems([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchCart();
+  }, []);
+
+  // ✅ Hàm cập nhật số lượng sản phẩm
+  const updateCartQuantity = async (productId: string, action: "increase" | "decrease") => {
+    try {
+      const token = await AsyncStorage.getItem("token");
+      if (!token) return;
+
+      await axios.post(
+        UPDATE_CART,
+        { productId, action },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      setCartItems((prevItems) =>
+        prevItems.map((item) =>
+          item.id === productId
+            ? { ...item, quantity: action === "increase" ? item.quantity + 1 : item.quantity - 1 }
+            : item
+        )
+      );
+    } catch (error) {
+      console.error("Lỗi khi cập nhật giỏ hàng:", error);
+    }
   };
 
-  // Hàm giảm số lượng sản phẩm
-  const handleDecrease = (id) => {
-    setCartItems((prev) =>
-      prev.map((item) =>
-        item.id === id && item.quantity > 1 ? { ...item, quantity: item.quantity - 1 } : item
-      )
-    );
+  // ✅ Hàm xóa sản phẩm khỏi giỏ hàng
+  const handleDeleteItem = async (id: string) => {
+    try {
+      const token = await AsyncStorage.getItem("token");
+      if (!token) return;
+
+      await axios.delete(DELETE_CART_ITEM(id), {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      setCartItems(cartItems.filter((item) => item.id !== id));
+    } catch (error) {
+      console.error("Lỗi khi xóa sản phẩm:", error);
+    }
   };
 
-  // Hàm xóa sản phẩm khỏi giỏ hàng
-  const handleRemove = (id) => {
-    setCartItems((prev) => prev.filter((item) => item.id !== id));
+  // ✅ Hàm xóa toàn bộ giỏ hàng
+  const handleClearCart = async () => {
+    try {
+      const token = await AsyncStorage.getItem("token");
+      if (!token) return;
+
+      await axios.delete(CLEAR_CART, { headers: { Authorization: `Bearer ${token}` } });
+
+      setCartItems([]);
+    } catch (error) {
+      console.error("Lỗi khi xóa giỏ hàng:", error);
+    }
   };
 
-  // Hàm đặt hàng
-  const handleCheckout = () => {
-    alert("Chức năng đặt hàng sẽ được cập nhật sau!");
+  // ✅ Hàm chuyển đến thanh toán
+  const handleCheckout = async () => {
+    const user = JSON.parse(await AsyncStorage.getItem("user") || "{}");
+    if (!user) {
+      Alert.alert("Thông báo", "Vui lòng đăng nhập để đặt hàng!");
+      router.push("/login");
+      return;
+    }
+
+    const storedCart = JSON.parse(await AsyncStorage.getItem("cart") || "{}");
+    const cartId = storedCart?._id || null;
+
+    if (!cartId) {
+      Alert.alert("Lỗi", "Không tìm thấy giỏ hàng. Vui lòng thử lại.");
+      return;
+    }
+
+    router.push({
+      pathname: "/order",
+      params: {
+        cartId,
+        productList: JSON.stringify(cartItems),
+        totalPrice,
+        shippingAddress: user.address || "",
+        name: user.username || "",
+        phone: user.phoneNumber || "",
+        email: user.email || "",
+      },
+    });
   };
 
-  // Tính tổng tiền
   const totalPrice = cartItems.reduce((total, item) => total + item.price * item.quantity, 0);
+
+  if (loading) return <ActivityIndicator size="large" color="black" />;
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      {/* Header */}
       <View style={styles.header}>
-        {/* Nút quay về */}
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-        >
+        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
           <Ionicons name="arrow-back-outline" size={28} color="black" />
         </TouchableOpacity>
-
-        {/* Tiêu đề CART */}
         <Text style={styles.title}>CART ({cartItems.length} product)</Text>
       </View>
 
-      {/* Danh sách sản phẩm */}
       <FlatList
         data={cartItems}
         keyExtractor={(item) => item.id}
-        contentContainerStyle={{ paddingBottom: 100 }} // Để không bị che bởi summary
         renderItem={({ item }) => (
           <View style={styles.cartItem}>
             <Image source={{ uri: item.image }} style={styles.image} />
-
             <View style={styles.details}>
               <Text style={styles.name}>{item.name}</Text>
               <Text style={styles.price}>{item.price.toLocaleString()} đ</Text>
-              {item.oldPrice && (
-                <Text style={styles.oldPrice}>
-                  {item.oldPrice.toLocaleString()} đ
-                </Text>
-              )}
+              {item.oldPrice && <Text style={styles.oldPrice}>{item.oldPrice.toLocaleString()} đ</Text>}
             </View>
 
-            {/* Chỉnh số lượng */}
             <View style={styles.quantityContainer}>
-              <TouchableOpacity
-                onPress={() => handleDecrease(item.id)}
-                disabled={item.quantity <= 1}
-              >
-                <Ionicons
-                  name="remove-circle-outline"
-                  size={24}
-                  color={item.quantity > 1 ? "black" : "gray"}
-                />
+              <TouchableOpacity onPress={() => updateCartQuantity(item.id, "decrease")}>
+                <Ionicons name="remove-circle-outline" size={24} color="black" />
               </TouchableOpacity>
               <Text style={styles.quantity}>{item.quantity}</Text>
-              <TouchableOpacity onPress={() => handleIncrease(item.id)}>
+              <TouchableOpacity onPress={() => updateCartQuantity(item.id, "increase")}>
                 <Ionicons name="add-circle-outline" size={24} color="black" />
               </TouchableOpacity>
             </View>
 
-            {/* Nút xóa */}
-            <TouchableOpacity
-              onPress={() => handleRemove(item.id)}
-              style={styles.removeButton}
-            >
+            <TouchableOpacity onPress={() => handleDeleteItem(item.id)}>
               <Ionicons name="trash-outline" size={24} color="red" />
             </TouchableOpacity>
           </View>
         )}
       />
 
-      {/* Hóa đơn */}
-      <View style={styles.summaryContainer}>
-        <View style={styles.summary}>
-          <Text style={styles.totalLabel}>Total price</Text>
-          <Text style={styles.totalPrice}>${totalPrice.toFixed(2)}</Text>
-        </View>
-
-        <TouchableOpacity onPress={handleCheckout} style={styles.checkoutButton}>
-          <Text style={styles.checkoutText}>Checkout</Text>
-          <Ionicons name="arrow-forward" size={18} color="white" />
-        </TouchableOpacity>
-      </View>
+      <TouchableOpacity onPress={handleCheckout} style={styles.checkoutButton}>
+        <Text style={styles.checkoutText}>Checkout</Text>
+        <Ionicons name="arrow-forward" size={18} color="white" />
+      </TouchableOpacity>
     </SafeAreaView>
   );
 };

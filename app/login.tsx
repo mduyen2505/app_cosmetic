@@ -15,8 +15,10 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { FontAwesome } from "@expo/vector-icons";
 import axios from "axios";
 import { Keyboard } from "react-native";
+import * as Linking from "expo-linking"; // ✅ Import Linking để xử lý Google Login Redirect
 
 import { GOOGLE_LOGIN, LOGIN_USER } from "../api/apiconfig";
+
 export default function LoginScreen() {
   const router = useRouter();
   const [email, setEmail] = useState("");
@@ -24,32 +26,32 @@ export default function LoginScreen() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    // Kiểm tra nếu có token trong URL sau khi đăng nhập bằng Google
-    const checkGoogleLogin = async () => {
-      const urlParams = new URLSearchParams(window.location.search);
-      const token = urlParams.get("token");
-      const username = urlParams.get("username");
-      const email = urlParams.get("email");
+    // 📌 Xử lý khi app nhận URL Redirect từ Google Login
+    const handleDeepLink = async (event: Linking.EventType) => {
+      const { url } = event;
+      const parsedUrl = new URL(url);
+      const token = parsedUrl.searchParams.get("token");
+      const username = parsedUrl.searchParams.get("username");
+      const email = parsedUrl.searchParams.get("email");
 
       if (token && username && email) {
         const user = { username, email, token };
         await AsyncStorage.setItem("user", JSON.stringify(user));
         await AsyncStorage.setItem("authToken", token);
 
-        Alert.alert("Thành công", "Đăng nhập thành công!");
+        Alert.alert("Thành công", "Đăng nhập Google thành công!");
         router.replace("/profile");
       }
     };
 
-    checkGoogleLogin();
-     // Xóa dữ liệu nhập khi chuyển trang
-     return () => {
-      setEmail("");
-      setPassword("");
+    // ✅ Đăng ký lắng nghe URL Redirect
+    const subscription = Linking.addEventListener("url", handleDeepLink);
+
+    // ✅ Hủy đăng ký khi component unmount
+    return () => {
+      subscription.remove();
     };
   }, []);
-  
-
   // 📌 Xử lý đăng nhập bằng API
   const handleLogin = async () => {
     if (!email || !password) {
@@ -60,20 +62,18 @@ export default function LoginScreen() {
     setLoading(true);
     try {
       const response = await axios.post(LOGIN_USER, { email, password });
-
       if (response.data && response.data.token) {
         const user = {
-          username: response.data.username,
-          email: response.data.email,
-          phoneNumber: response.data.phoneNumber || "",
-          token: response.data.token,
+            username: response.data.username,
+            email: response.data.email,
+            phoneNumber: response.data.phoneNumber || "",
+            token: response.data.token,
         };
-
         await AsyncStorage.setItem("user", JSON.stringify(user));
         await AsyncStorage.setItem("authToken", response.data.token);
-
-        Alert.alert("Thành công", "Đăng nhập thành công!");
-        router.replace("/profile"); // Chuyển đến Profile sau khi đăng nhập
+        // Chuyển đến trang Profile
+        router.replace("/profile");
+    
       } else {
         Alert.alert("Lỗi", "Không nhận được token từ server!");
       }
@@ -86,12 +86,20 @@ export default function LoginScreen() {
 
   // 📌 Xử lý đăng nhập bằng Google
   const handleGoogleLogin = async () => {
-    window.location.href = GOOGLE_LOGIN;
+    const googleAuthUrl = GOOGLE_LOGIN;
+    const supported = await Linking.canOpenURL(googleAuthUrl);
+
+    if (supported) {
+      await Linking.openURL(googleAuthUrl); // Mở trang đăng nhập Google
+    } else {
+      Alert.alert("Lỗi", "Không thể mở trang Google Login");
+    }
   };
 
   const dismissKeyboard = () => {
     Keyboard.dismiss();
   };
+
   return (
     <SafeAreaView style={styles.safeContainer}>
       <View style={styles.container}>
@@ -167,7 +175,67 @@ export default function LoginScreen() {
 
 // 🎨 **Styles**
 const styles = StyleSheet.create({
-
+  safeContainer: { 
+    flex: 1,
+    backgroundColor: "#f9f9f9",
+  },
+  container: {
+    flexGrow: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 20,
+  },
+  logo: {
+    marginTop: -100,
+    width: 250,
+    height: 250,
+    marginBottom: -20,
+    resizeMode: "contain",
+  }, 
+  title: { 
+    fontSize: 26, 
+    fontWeight: "bold", 
+    color: "#333", 
+    marginBottom: 20 
+  },
+  inputContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    width: "90%",
+    backgroundColor: "#fff",
+    borderRadius: 9,
+    paddingHorizontal: 15,
+    marginBottom: 15,
+    borderWidth: 1,
+  },
+  icon: { 
+    marginRight: 10 
+  },
+  input: { 
+    flex: 1, 
+    height: 50, 
+    fontSize: 16, 
+    color: "#333" 
+  },
+  button: {
+    width: "90%",
+    backgroundColor: "#ff758c",
+    padding: 12,
+    borderRadius: 25,
+    alignItems: "center",
+    marginTop: 10,
+  },
+  buttonText: { 
+    color: "#fff", 
+    fontSize: 18, 
+    fontWeight: "bold" 
+  },
+  forgotPassword: { 
+    marginTop: 10, 
+    fontSize: 14, 
+    color: "#ff758c", 
+    textDecorationLine: "underline" 
+  },
   separatorContainer: {
     flexDirection: "row",
     alignItems: "center",
@@ -224,54 +292,5 @@ const styles = StyleSheet.create({
     color: "#ff758c",
     marginLeft: 5,
   },
-
-safeContainer: { 
-  flex: 1,
-  backgroundColor: "#f9f9f9",
- },
-container: {
-  flexGrow: 1,
-  justifyContent: "center",
-  alignItems: "center",
-  padding: 20,
-},
-logo: {
-  marginTop: -100,
-  width: 250,
-  height: 250,
-  marginBottom: -20,
-  resizeMode: "contain",
-}, 
- title: { fontSize: 26, fontWeight: "bold", color: "#333", marginBottom: 20 },
-inputContainer: {
-  flexDirection: "row",
-  alignItems: "center",
-  width: "90%",
-  backgroundColor: "#fff",
-  borderRadius: 9,
-  paddingHorizontal: 15,
-  marginBottom: 15,
-  borderWidth: 1
-
-},
-icon: { marginRight: 10 },
-input: { flex: 1, height: 50, fontSize: 16, color: "#333" },
-button: {
-  width: "90%",
-  backgroundColor: "#ff758c",
-  padding: 12,
-  borderRadius: 25,
-  alignItems: "center",
-  marginTop: 10,
-},
-buttonText: { color: "#fff", fontSize: 18, fontWeight: "bold" },
-forgotPassword: { marginTop: 10, fontSize: 14, color: "#ff758c", textDecorationLine: "underline" },
-socialText: { marginTop: 15, fontSize: 14, color: "#555" },
-
-facebook: { backgroundColor: "#3b5998" },
-google: { backgroundColor: "#DB4437" },
-twitter: { backgroundColor: "#1DA1F2" },
-linkedin: { backgroundColor: "#0077b5" },
-
 });
 
