@@ -8,20 +8,19 @@ export default function Layout() {
     <Tabs
       screenOptions={({ route }) => ({
         headerShown: false,
-        tabBarShowLabel: true, // ✅ Hiển thị tên dưới icon
-        tabBarStyle: styles.tabBar,
+        tabBarShowLabel: true,
+        tabBarStyle: route.name === "index" ? styles.tabBar : { display: "none" }, // ✅ Ẩn bottom tab khi không ở trang Home
         tabBarLabelStyle: styles.tabLabel,
         tabBarIcon: ({ color, size, focused }) => {
           let iconName: keyof typeof Ionicons.glyphMap;
 
           if (route.name === "index") iconName = "home-outline";
           else if (route.name === "cart") iconName = "cart-outline";
-          else if (route.name === "offer") iconName = "pricetag-outline"; // ✅ Đổi icon của Offer
+          else if (route.name === "offer") iconName = "pricetag-outline";
           else if (route.name === "wishlist") iconName = "heart-outline";
           else if (route.name === "profile") iconName = "person-outline";
           else return <View />;
 
-          // ✅ Xử lý riêng cho nút Cart ở giữa
           if (route.name === "cart") {
             return (
               <View style={styles.cartButton}>
@@ -38,24 +37,22 @@ export default function Layout() {
             />
           );
         },
-        tabBarActiveTintColor: "#ff758c", // ✅ Màu khi tab được chọn
-        tabBarInactiveTintColor: "#999", // ✅ Màu khi chưa chọn
+        tabBarActiveTintColor: "#ff758c",
+        tabBarInactiveTintColor: "#999",
       })}
     >
-      {/* Các tab chính */}
       <Tabs.Screen name="index" options={{ title: "Home" }} />
       <Tabs.Screen name="offer" options={{ title: "Offer" }} />
       <Tabs.Screen
         name="cart"
         options={{
           title: "",
-          tabBarButton: (props) => <CustomCartButton {...props} />, // ✅ Định nghĩa component riêng
+          tabBarButton: (props) => <CustomCartButton {...props} />, 
         }}
       />
       <Tabs.Screen name="wishlist" options={{ title: "Wishlist" }} />
       <Tabs.Screen name="profile" options={{ title: "Profile" }} />
-
-      {/* Các trang danh mục, ẩn khỏi tab */}
+      
       <Tabs.Screen name="category" options={{ href: null }} />
       <Tabs.Screen name="subcategory" options={{ href: null }} />
       <Tabs.Screen name="productdetail" options={{ href: null }} />
@@ -66,16 +63,11 @@ export default function Layout() {
       <Tabs.Screen name="update_info" options={{ href: null }} />
       <Tabs.Screen name="order_status" options={{ href: null }} />
       <Tabs.Screen name="information" options={{ href: null }} />
-
-
-
-
-
+      <Tabs.Screen name="order" options={{ href: null }} />
     </Tabs>
   );
 }
 
-// ✅ Tạo một component riêng cho nút Cart để tránh lỗi TypeScript
 const CustomCartButton = ({ children, ...props }: any) => {
   return (
     <TouchableOpacity {...props} style={[props.style, styles.cartButtonWrapper]}>
@@ -84,7 +76,6 @@ const CustomCartButton = ({ children, ...props }: any) => {
   );
 };
 
-// 🎨 **Styles**
 const styles = StyleSheet.create({
   tabBar: {
     backgroundColor: "#fff",
@@ -95,7 +86,7 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    elevation: 10, // Đổ bóng trên Android
+    elevation: 10,
     shadowColor: "#000",
     shadowOpacity: 0.1,
     shadowOffset: { width: 0, height: -2 },
@@ -104,11 +95,10 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "bold",
   },
-  
   cartButton: {
     width: 65,
     height: 65,
-    backgroundColor: "#ff758c", // ✅ Màu hồng nổi bật
+    backgroundColor: "#ff758c",
     borderRadius: 50,
     justifyContent: "center",
     alignItems: "center",

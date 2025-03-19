@@ -1,4 +1,7 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, } from "react";
+import { useFocusEffect } from "@react-navigation/native";
+import { useCallback } from "react";
+
 import {
   View,
   Text,
@@ -24,7 +27,8 @@ export default function ProfileScreen() {
   const [loading, setLoading] = useState(true);
 
   // ✅ Lấy thông tin người dùng từ API
-  useEffect(() => {
+  useFocusEffect(
+    useCallback(() => {
     const fetchUserInfo = async () => {
       try {
         const token = await AsyncStorage.getItem("authToken");
@@ -57,8 +61,8 @@ export default function ProfileScreen() {
     };
 
     fetchUserInfo();
-  }, []);
-
+  }, [])
+);
   // ✅ Xử lý đăng xuất
   const handleLogout = async () => {
     Alert.alert("Đăng xuất", "Bạn có chắc chắn muốn đăng xuất?", [
@@ -80,6 +84,15 @@ export default function ProfileScreen() {
 
   return (
     <SafeAreaView style={styles.safeContainer}>
+      <View style={styles.header}>
+  <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+    <Ionicons name="arrow-back-outline" size={28} color="black" />
+  </TouchableOpacity>
+  <View style={styles.headerTitleContainer}>
+    <Text style={styles.headerTitle}>PROFILE</Text>
+  </View>
+</View>
+
       <ScrollView contentContainerStyle={styles.container}>
         {/* Hồ sơ người dùng */}
         <View style={styles.profileCard}>
@@ -175,6 +188,28 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: "#eee",
   },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 20,
+    marginTop: 20,
+  },
+  
+  backButton: {
+    padding: 10,
+  },
+  
+  headerTitleContainer: {
+    flex: 1, // Để phần tiêu đề tự động căn giữa
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: "bold",
+  },
+  
   menuText: { flex: 1, fontSize: 16, marginLeft: 15 },
 });
 

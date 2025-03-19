@@ -205,13 +205,22 @@ const CartScreen: React.FC = () => {
         )}
       />
 
-      <TouchableOpacity onPress={handleCheckout} style={styles.checkoutButton}>
-        <Text style={styles.checkoutText}>Checkout</Text>
-        <Ionicons name="arrow-forward" size={18} color="white" />
-      </TouchableOpacity>
+      
+<View style={styles.checkoutContainer}>
+  <View style={styles.priceContainer}>
+    <Text style={styles.totalLabel}>Total price</Text>
+    <Text style={styles.totalPrice}>{totalPrice.toLocaleString()} ₫</Text> 
+  </View>
+  <TouchableOpacity onPress={handleCheckout} style={styles.checkoutButton}>
+    <Text style={styles.checkoutText}>Checkout</Text>
+    <Ionicons name="arrow-forward" size={18} color="white" />
+  </TouchableOpacity>
+</View>
+
     </SafeAreaView>
   );
 };
+
 
 // Style cho giỏ hàng
 const styles = StyleSheet.create({
@@ -303,25 +312,51 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 10,
   },
+  
+  
+
+  checkoutContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    backgroundColor: "white",
+    paddingVertical: 40,
+    paddingHorizontal: 25,
+    borderTopLeftRadius: 30,
+    borderTopRightRadius: 30,
+    shadowColor: "#000",
+    shadowOpacity: 0.1,
+    shadowOffset: { width: 0, height: -3 },
+    elevation: 10,
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+  },
+  priceContainer: {
+    flex: 1,
+  },
   totalLabel: {
     fontSize: 14,
     color: "#888",
+    fontWeight: "500",
   },
   totalPrice: {
-    fontSize: 22,
+    fontSize: 24,
     fontWeight: "bold",
+    color: "#000",
   },
   checkoutButton: {
-    backgroundColor: "black",
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
+    backgroundColor: "black",
     paddingVertical: 14,
-    borderRadius: 30, // Bo góc tròn
-    elevation: 5, // ✅ Hiệu ứng nổi
+    paddingHorizontal: 25,
+    borderRadius: 30,
     shadowColor: "#000",
     shadowOpacity: 0.3,
     shadowOffset: { width: 0, height: 4 },
+    elevation: 10,
   },
   checkoutText: {
     color: "white",
@@ -329,6 +364,7 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     marginRight: 10,
   },
+  
 });
 
 export default CartScreen;

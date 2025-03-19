@@ -16,6 +16,8 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import axios from "axios";
 import { useRouter } from "expo-router";
 import { GET_USER_INFO, UPDATE_USER_INFO } from "../api/apiconfig";
+import { Ionicons } from "@expo/vector-icons";
+
 
 // Định nghĩa kiểu dữ liệu
 interface Location {
@@ -204,7 +206,14 @@ export default function ProfileScreen() {
   return (
     <SafeAreaView style={styles.safeContainer}>
       <ScrollView contentContainerStyle={styles.container}>
-        <Text style={styles.title}>Cập nhật thông tin cá nhân</Text>
+      <View style={styles.header}>
+  <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+    <Ionicons name="arrow-back-outline" size={28} color="black" />
+  </TouchableOpacity>
+  <View style={styles.headerTitleContainer}>
+    <Text style={styles.headerTitle}>Cập nhật thông tin cá nhân</Text>
+  </View>
+</View>
 
         <View style={styles.formGroup}>
           <Text style={styles.label}>Tên</Text>
@@ -318,6 +327,28 @@ const styles = StyleSheet.create({
     height: 50,
     width: "100%",
   },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 20,
+    marginTop: 20,
+  },
+  
+  backButton: {
+    padding: 10,
+  },
+  
+  headerTitleContainer: {
+    flex: 1, // Để phần tiêu đề tự động căn giữa
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: "bold",
+  },
+  
   buttonText: { color: "#fff", fontSize: 16, fontWeight: "bold" },
   dropdown: { padding: 12, borderWidth: 1, borderColor: "#ddd", borderRadius: 8, backgroundColor: "#fff" },
   modalContainer: { flex: 1, padding: 20, backgroundColor: "white" },
