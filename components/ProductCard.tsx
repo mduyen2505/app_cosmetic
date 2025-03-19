@@ -9,15 +9,25 @@ import {
 } from "react-native";
 import { Ionicons, FontAwesome } from "@expo/vector-icons"; 
 import { useRouter } from "expo-router";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import { API_CART, WISHLIST } from "../api/apiconfig";
 
 // 🛒 **Hàm xử lý giỏ hàng**
 const addToCart = async (productId: string, quantity: number = 1) => {
   try {
+    const token = await AsyncStorage.getItem("authToken");
+    if (!token) {
+      Alert.alert("Lỗi", "Bạn cần đăng nhập để thêm sản phẩm vào giỏ hàng!");
+      return;
+    }
+
     const response = await fetch(API_CART, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { 
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}` // 🟢 Thêm token vào Header
+      },
       body: JSON.stringify({ productId, quantity }),
     });
 
@@ -28,6 +38,7 @@ const addToCart = async (productId: string, quantity: number = 1) => {
     Alert.alert("Lỗi", "Không thể thêm sản phẩm vào giỏ hàng.");
   }
 };
+
 
 // ❤️ **Hàm xử lý yêu thích**
 const getWishlist = async (): Promise<string[]> => {
@@ -45,31 +56,55 @@ const getWishlist = async (): Promise<string[]> => {
 
 const addToWishlist = async (productId: string) => {
   try {
+    const token = await AsyncStorage.getItem("authToken");
+    if (!token) {
+      Alert.alert("Lỗi", "Bạn cần đăng nhập để thêm vào danh sách yêu thích!");
+      return;
+    }
+
     const response = await fetch(`${WISHLIST}/add`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { 
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}` // 🟢 Thêm token vào Header
+      },
       body: JSON.stringify({ productId }),
     });
 
     if (!response.ok) throw new Error("Lỗi khi thêm vào yêu thích!");
+
+    Alert.alert("Thành công", "Đã thêm vào danh sách yêu thích.");
   } catch (error) {
     Alert.alert("Lỗi", "Không thể thêm vào danh sách yêu thích.");
   }
 };
 
+
 const removeFromWishlist = async (productId: string) => {
   try {
+    const token = await AsyncStorage.getItem("authToken");
+    if (!token) {
+      Alert.alert("Lỗi", "Bạn cần đăng nhập để xóa khỏi danh sách yêu thích!");
+      return;
+    }
+
     const response = await fetch(`${WISHLIST}/remove`, {
       method: "DELETE",
-      headers: { "Content-Type": "application/json" },
+      headers: { 
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}` // 🟢 Thêm token vào Header
+      },
       body: JSON.stringify({ productId }),
     });
 
     if (!response.ok) throw new Error("Lỗi khi xóa khỏi yêu thích!");
+
+    Alert.alert("Thành công", "Đã xóa khỏi danh sách yêu thích.");
   } catch (error) {
     Alert.alert("Lỗi", "Không thể xóa khỏi danh sách yêu thích.");
   }
 };
+
 
 // 🛍️ **Component ProductCard**
 interface Product {

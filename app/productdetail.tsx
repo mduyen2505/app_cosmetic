@@ -15,9 +15,10 @@ import {
 import { FontAwesome } from "@expo/vector-icons";
 import axios from "axios";
 import { useRoute } from "@react-navigation/native";
-import { getProductDetails, UPDATE_CART, WISHLIST } from "../api/apiconfig";
+import { getProductDetails, UPDATE_CART, WISHLIST, API_CART } from "../api/apiconfig";
 import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 // ✅ Định nghĩa kiểu dữ liệu sản phẩm
 interface Product {
@@ -65,28 +66,43 @@ export default function ProductDetail() {
     };
     fetchProduct();
   }, [productId]);
-  // ✅ Xử lý thêm vào giỏ hàng
-  const handleAddToCart = async () => {
+
+  const addToCart = async () => {
     try {
-      await axios.post(UPDATE_CART, { productId, action: "increase" });
-      Alert.alert("Thành công", "Sản phẩm đã được thêm vào giỏ hàng!");
+      const token = await AsyncStorage.getItem("authToken");
+      if (!token) {
+        Alert.alert("Lỗi", "Bạn cần đăng nhập để thêm sản phẩm vào giỏ hàng!");
+        return;
+      }
+
+      await axios.post(
+        API_CART,
+        { productId, quantity },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      Alert.alert("Thành công", "Sản phẩm đã được thêm vào giỏ hàng.");
     } catch (error) {
-      Alert.alert("Lỗi", "Không thể thêm vào giỏ hàng. Vui lòng thử lại!");
+      Alert.alert("Lỗi", "Không thể thêm sản phẩm vào giỏ hàng.");
     }
   };
 
-  // ✅ Xử lý thêm vào wishlist
   const handleToggleFavorite = async () => {
     try {
+      const token = await AsyncStorage.getItem("authToken");
+      if (!token) {
+        Alert.alert("Lỗi", "Bạn cần đăng nhập để thêm vào yêu thích!");
+        return;
+      }
+
+      await axios.post(WISHLIST, { productId }, { headers: { Authorization: `Bearer ${token}` } });
       setIsFavorite(!isFavorite);
-      await axios.post(WISHLIST, { productId });
       Alert.alert("Thành công", isFavorite ? "Đã xóa khỏi danh sách yêu thích!" : "Đã thêm vào danh sách yêu thích!");
     } catch (error) {
       Alert.alert("Lỗi", "Không thể cập nhật danh sách yêu thích!");
     }
   };
 
-  // ✅ Xử lý gửi đánh giá sản phẩm
   const handleReviewSubmit = async () => {
     if (!comment.trim()) {
       Alert.alert("Lỗi", "Vui lòng nhập nội dung đánh giá!");
@@ -94,24 +110,24 @@ export default function ProductDetail() {
     }
 
     try {
-      const response = await axios.post(
-        `http://172.20.10.4:3000/api/reviews/`, // 🔥 API Web của bạn
+      const token = await AsyncStorage.getItem("authToken");
+      if (!token) {
+        Alert.alert("Lỗi", "Bạn cần đăng nhập để gửi đánh giá!");
+        return;
+      }
+
+      await axios.post(
+        `http://172.20.10.4:3000/api/reviews/`,
         { productId, rating, comment },
-        { headers: { Authorization: `Bearer YOUR_AUTH_TOKEN` } }
+        { headers: { Authorization: `Bearer ${token}` } }
       );
 
-      if (response.data.message === "Đánh giá thành công!") {
-        Alert.alert("Thành công", "Cảm ơn bạn đã đánh giá!");
-        setShowReviewModal(false);
-        setComment("");
-        setRating(5);
+      Alert.alert("Thành công", "Cảm ơn bạn đã đánh giá!");
+      setShowReviewModal(false);
+      setComment("");
+      setRating(5);
 
-        // 🔥 Cập nhật danh sách đánh giá mới
-        setReviews((prevReviews) => [
-          ...prevReviews,
-          { id: new Date().toISOString(), user: "Bạn", rating, comment },
-        ]);
-      }
+      setReviews([...reviews, { id: new Date().toISOString(), user: "Bạn", rating, comment }]);
     } catch (error) {
       Alert.alert("Lỗi", "Bạn đã đánh giá sản phẩm này rồi!");
     }
@@ -288,7 +304,7 @@ export default function ProductDetail() {
           </TouchableOpacity>
         </View>
 
-        <TouchableOpacity style={styles.addToCartButton} onPress={handleAddToCart}>
+        <TouchableOpacity style={styles.addToCartButton} onPress={addToCart}>
           <FontAwesome name="shopping-bag" size={18} color="white" />
           <Text style={styles.buttonText}>Thêm vào giỏ</Text>
         </TouchableOpacity>

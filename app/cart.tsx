@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   View,
   Text,
@@ -14,6 +14,7 @@ import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
+import { useFocusEffect } from "@react-navigation/native";
 
 // Import API Endpoints
 import {
@@ -29,54 +30,56 @@ const CartScreen: React.FC = () => {
   const router = useRouter(); // ✅ Thay useNavigation bằng useRouter
 
   // ✅ Lấy dữ liệu giỏ hàng từ API
-  useEffect(() => {
-    const fetchCart = async () => {
-      try {
-        const token = await AsyncStorage.getItem("token");
-        if (!token) {
-          Alert.alert("Lỗi", "Bạn cần đăng nhập để xem giỏ hàng.");
-          router.push("/login");
-          return;
-        }
-
-        const response = await axios.get(GET_CART, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-
-        if (response.data && response.data.products) {
-          AsyncStorage.setItem("cart", JSON.stringify({ _id: response.data._id }));
-          const formattedCartItems = response.data.products.map((product: any) => ({
-            id: product.productId._id,
-            name: product.productId.name,
-            price: product.productId.promotionPrice,
-            oldPrice: product.productId.discount
-              ? product.productId.promotionPrice / (1 - product.productId.discount / 100)
-              : null,
-            quantity: product.quantity,
-            image: product.productId.image.startsWith("http")
-              ? product.productId.image
-              : `http://localhost:3000/images/${product.productId.image}`,
-          }));
-
-          setCartItems(formattedCartItems);
-        } else {
-          setCartItems([]);
-        }
-      } catch (error) {
-        console.error("Lỗi khi lấy giỏ hàng:", error);
-        setCartItems([]);
-      } finally {
-        setLoading(false);
+  const fetchCart = async () => {
+    try {
+      const token = await AsyncStorage.getItem("authToken");
+      if (!token) {
+        Alert.alert("Lỗi", "Bạn cần đăng nhập để xem giỏ hàng.");
+        router.push("/login");
+        return;
       }
-    };
 
-    fetchCart();
-  }, []);
+      const response = await axios.get(GET_CART, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (response.data && response.data.products) {
+        AsyncStorage.setItem("cart", JSON.stringify({ _id: response.data._id }));
+        const formattedCartItems = response.data.products.map((product: any) => ({
+          id: product.productId._id,
+          name: product.productId.name,
+          price: product.productId.promotionPrice,
+          oldPrice: product.productId.discount
+            ? product.productId.promotionPrice / (1 - product.productId.discount / 100)
+            : null,
+          quantity: product.quantity,
+          image: product.productId.image.startsWith("http")
+            ? product.productId.image
+            : `http://172.20.10.4:3000/images/${product.productId.image}`,
+        }));
+
+        setCartItems(formattedCartItems);
+      } else {
+        setCartItems([]);
+      }
+    } catch (error) {
+      console.error("Lỗi khi lấy giỏ hàng:", error);
+      setCartItems([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchCart();
+    }, [])
+  );
 
   // ✅ Hàm cập nhật số lượng sản phẩm
   const updateCartQuantity = async (productId: string, action: "increase" | "decrease") => {
     try {
-      const token = await AsyncStorage.getItem("token");
+      const token = await AsyncStorage.getItem("authToken");
       if (!token) return;
 
       await axios.post(
@@ -84,6 +87,7 @@ const CartScreen: React.FC = () => {
         { productId, action },
         { headers: { Authorization: `Bearer ${token}` } }
       );
+      fetchCart();
 
       setCartItems((prevItems) =>
         prevItems.map((item) =>
@@ -100,12 +104,13 @@ const CartScreen: React.FC = () => {
   // ✅ Hàm xóa sản phẩm khỏi giỏ hàng
   const handleDeleteItem = async (id: string) => {
     try {
-      const token = await AsyncStorage.getItem("token");
+      const token = await AsyncStorage.getItem("authToken");
       if (!token) return;
 
       await axios.delete(DELETE_CART_ITEM(id), {
         headers: { Authorization: `Bearer ${token}` },
       });
+      fetchCart();
 
       setCartItems(cartItems.filter((item) => item.id !== id));
     } catch (error) {
@@ -116,7 +121,7 @@ const CartScreen: React.FC = () => {
   // ✅ Hàm xóa toàn bộ giỏ hàng
   const handleClearCart = async () => {
     try {
-      const token = await AsyncStorage.getItem("token");
+      const token = await AsyncStorage.getItem("authToken");
       if (!token) return;
 
       await axios.delete(CLEAR_CART, { headers: { Authorization: `Bearer ${token}` } });
@@ -236,12 +241,12 @@ const styles = StyleSheet.create({
     backgroundColor: "white",
     borderRadius: 15,
     marginBottom: 10,
-    marginTop:10,
+    marginTop: 10,
     shadowColor: "#000",
     shadowOpacity: 0.1,
     shadowOffset: { width: 1, height: 2 },
     elevation: 3,
-    height:150,
+    height: 150,
   },
   image: {
     width: 80,
@@ -251,8 +256,6 @@ const styles = StyleSheet.create({
   },
   details: {
     flex: 1,
-    
-    
   },
   name: {
     fontSize: 14,
