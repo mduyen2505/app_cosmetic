@@ -182,8 +182,8 @@ const OrdersScreen = () => {
           {/* The "View Details" button is shown in all statuses */}
           <TouchableOpacity
             style={styles.detailButton}
-            onPress={() => router.push(`/orderdetail/${item._id}`)} // Use expo-router for navigation
-          >
+            onPress={() => router.push(`/orderdetail?orderId=${item._id}`)}
+            >
             <Text style={styles.buttonText}>Xem chi tiết</Text>
           </TouchableOpacity>
         </View>
