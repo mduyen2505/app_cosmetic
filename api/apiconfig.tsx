@@ -55,6 +55,8 @@ export const REGISTER_USER = `${BASE_URL}/users/register`;
 export const LOGIN_USER = `${BASE_URL}/users/login`;
 export const GOOGLE_LOGIN = `${BASE_URL}/users/auth/google`;
 export const VERIFY_OTP = `${BASE_URL}/users/verify-otp`;
+export const UPDATE_PAYMENT_STATUS = `${BASE_URL}/payments/momo-ipn`; 
+
 
 
 export const GET_BLOB = `${BASE_URL}/blogs`; 
