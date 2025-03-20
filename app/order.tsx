@@ -56,7 +56,8 @@ interface RouteParams {
     name: string;      // Tên mã giảm giá
     discount: number;  // Phần trăm giảm giá
     expiry: string;    // Ngày hết hạn
-    message: string;   // Thông báo
+    message: string; 
+    description:string;  // Thông báo
   }
   
   // Định nghĩa thêm một interface cho thông tin voucher đã tính toán
@@ -298,9 +299,17 @@ const OrderScreen = () => {
       const data = await response.json();
 
       if (data && data.payUrl) {
-        // Check if the payUrl is available in the response
-        Linking.openURL(data.payUrl);
-        console.log('Redirecting to payment page:', data.payUrl);
+        const url = data.payUrl;
+Linking.canOpenURL(url)
+  .then((supported) => {
+    if (supported) {
+      Linking.openURL(url);
+    } else {
+      Alert.alert('Lỗi', 'Không thể mở URL thanh toán');
+    }
+  })
+  .catch((err) => console.error('Lỗi khi mở URL:', err));
+
         // Update payment status after successful payment
         const paymentStatusData = {
           orderId: data.orderId || orderId,
@@ -496,7 +505,10 @@ const OrderScreen = () => {
                     </View>
                     <View style={styles.voucherDetails}>
                       <Text style={styles.voucherCode}>{voucher.name}</Text>
-                      <Text style={styles.voucherDescription}>{voucher.message}</Text>
+                      <Text style={styles.voucherDescription}>{voucher.description}</Text>
+                      <Text style={styles.voucherDiscount}>🔖 Giảm {voucher.discount}%</Text>
+                      <Text style={styles.Expiry}>Hết hạn: {new Date(voucher.expiry).toLocaleDateString()} </Text>
+
                     </View>
                     <View style={styles.voucherRadio}>
                       <Ionicons
@@ -723,11 +735,22 @@ const styles = StyleSheet.create({
     voucherDetails: {
         flex: 1,
         justifyContent: 'center',
-    },
+},
     voucherDescription: {
         fontSize: 14,
         color: '#777',
     },
+voucherDiscount: {
+      fontSize: 14,
+      color: '#777',
+},
+Expiry: {
+    fontSize: 12,
+    color: '#777',
+},
+
+  
+
     voucherRadio: {
         marginLeft: 15,
     },
