@@ -61,5 +61,13 @@ export const UPDATE_PAYMENT_STATUS = `${BASE_URL}/payments/momo-ipn`;
 
 export const GET_BLOB = `${BASE_URL}/blogs`; 
 
+export const ORDER_LIST = `${BASE_URL}/orders`; 
+export const ORDER_CANCEL = `${BASE_URL}/orders/cancel`; 
+export const ORDER_DELIVER = `${BASE_URL}/orders/deliver`; 
+
+
+
+
+
 
 

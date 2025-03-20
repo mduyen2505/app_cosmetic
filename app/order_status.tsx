@@ -1,8 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, FlatList, TouchableOpacity, Image, StyleSheet, ScrollView, StatusBar } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';  // Import Ionicons for the back button
+import axios from 'axios';
+import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { red } from 'react-native-reanimated/lib/typescript/reanimated2/Colors';
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { ORDER_LIST,ORDER_CANCEL,ORDER_DELIVER } from '../api/apiconfig';
 
 // Define types for product and order
 interface Product {
@@ -22,43 +24,112 @@ interface Order {
   orderTotal: number;
 }
 
-// Mock data
-const mockOrders: Order[] = [
-  {
-    _id: '67c7ba4a336f617178b4c336',
-    createdAt: '2025-03-05T16:43:22',
-    status: 'Confirmed',
-    products: [
-      {
-        productId: {
-          name: 'Dung Dịch Tẩy Da Chết Paula’s Choice 2% BHA',
-          image: 'https://via.placeholder.com/80',
-          promotionPrice: 219000,
-        },
-        quantity: 1,
-      },
-      {
-        productId: {
-          name: 'Nước Tẩy Trang L\'Oreal Dưỡng Ẩm Cho Da Thường, Khô',
-          image: 'https://via.placeholder.com/80',
-          promotionPrice: 166500,
-        },
-        quantity: 1,
-      },
-    ],
-    orderTotal: 454050,
-  },
-];
-
 const OrdersScreen = () => {
-  const [orders, setOrders] = useState<Order[]>(mockOrders); // Use mock data for now
+  const [orders, setOrders] = useState<Order[]>([]); 
   const [selectedStatus, setSelectedStatus] = useState<string>('All');
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string>('');
   const router = useRouter();
+
+  // Fetch orders from the API
+  useEffect(() => {
+    const fetchOrders = async () => {
+      try {
+        const token = await AsyncStorage.getItem("authToken"); // Fetch token from AsyncStorage
+        if (!token) {
+          setError("Bạn chưa đăng nhập!");
+          setLoading(false);
+          return;
+        }
+
+        const response = await axios.get(ORDER_LIST,{
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+       
+        if (response.data.status === "OK") {
+          setOrders(response.data.data);
+        } else {
+          setError("Không thể tải danh sách đơn hàng.");
+        }
+      } catch (error) {
+        console.error("Lỗi khi lấy đơn hàng:", error);
+        setError("Lỗi kết nối đến server.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchOrders();
+  }, []);
+
+  // Cancel pending order
+  const cancelOrder = async (orderId: string) => {
+    try {
+      const token = await AsyncStorage.getItem("authToken");
+      if (!token) {
+        setError("Bạn chưa đăng nhập!");
+        return;
+      }
+
+      const response = await axios.put(
+        ORDER_CANCEL,
+        { orderId },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      
+      if (response.data.status === "OK") {
+        // Update the orders state to reflect the canceled order
+        setOrders(prevOrders => prevOrders.map(order => 
+          order._id === orderId ? { ...order, status: 'Cancelled' } : order
+        ));
+        alert("Đơn hàng đã được hủy");
+      } else {
+        alert("Không thể hủy đơn hàng.");
+      }
+    } catch (error) {
+      console.error("Lỗi khi hủy đơn hàng:", error);
+    }
+  };
+
+  // Confirm shipped order
+  const confirmReceived = async (orderId: string) => {
+    try {
+      const token = await AsyncStorage.getItem("authToken");
+      if (!token) {
+        setError("Bạn chưa đăng nhập!");
+        return;
+      }
+
+      const response = await axios.post(
+        ORDER_DELIVER,
+        { orderId },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      if (response.data.status === "OK") {
+        
+        // Update the orders state to reflect the shipped order
+        setOrders(prevOrders =>
+          prevOrders.map(order =>
+            order._id === orderId ? { ...order, status: "Delivered" } : order
+          )
+        );
+        
+
+        alert("Đơn hàng đã được xác nhận là đã nhận");
+      } else {
+        alert("Không thể xác nhận đơn hàng.");
+      }
+    } catch (error) {
+      console.error("Lỗi khi xác nhận đơn hàng:", error);
+    }
+  };
 
   // Filter orders based on selected status
   const filterOrders = () => {
     if (selectedStatus === 'All') return orders;
-    return orders.filter((order) => order.status === selectedStatus);
+    return orders.filter(order => order.status === selectedStatus);
   };
 
   const renderItem = ({ item }: { item: Order }) => (
@@ -70,8 +141,14 @@ const OrdersScreen = () => {
       <Text style={[styles.status, { color: getStatusColor(item.status) }]}>{item.status}</Text>
       {item.products.map((product, idx) => (
         <View key={idx} style={styles.productRow}>
-          <Image source={{ uri: product.productId.image }} style={styles.productImage} />
-          <View style={styles.productDetails}>
+<Image 
+  source={{ 
+    uri: product.productId.image.startsWith("http") 
+      ? product.productId.image 
+      : `http://172.20.10.4:3000/images/${product.productId.image}` 
+  }} 
+  style={styles.productImage} 
+/>          <View style={styles.productDetails}>
             <Text style={styles.productName}>{product.productId.name}</Text>
             <Text style={styles.productQuantity}>Số lượng: {product.quantity}</Text>
             <Text style={styles.productPrice}>
@@ -82,30 +159,26 @@ const OrdersScreen = () => {
       ))}
       <View style={styles.summary}>
         <Text style={styles.total}>Tổng tiền: {item.orderTotal.toLocaleString()} đ</Text>
-  
+
         {/* Conditional rendering of buttons */}
         <View style={styles.buttonContainer}>
           {item.status === 'Pending' && (
-            <>
-              <TouchableOpacity
-                style={styles.cancelButton}
-                onPress={() => console.log('Cancel order', item._id)} // Handle cancel
-              >
-                <Text style={styles.buttonText}>Hủy đơn hàng</Text>
-              </TouchableOpacity>
-            </>
+            <TouchableOpacity
+              style={styles.cancelButton}
+              onPress={() => cancelOrder(item._id)} // Handle cancel
+            >
+              <Text style={styles.buttonText}>Hủy đơn hàng</Text>
+            </TouchableOpacity>
           )}
           {item.status === 'Shipped' && (
-            <>
-              <TouchableOpacity
-                style={styles.receivedButton}
-                onPress={() => console.log('Confirm received', item._id)} // Handle received
-              >
-                <Text style={styles.buttonText}>Đã nhận được hàng</Text>
-              </TouchableOpacity>
-            </>
+            <TouchableOpacity
+              style={styles.receivedButton}
+              onPress={() => confirmReceived(item._id)} // Handle received
+            >
+              <Text style={styles.buttonText}>Đã nhận hàng</Text>
+            </TouchableOpacity>
           )}
-          
+
           {/* The "View Details" button is shown in all statuses */}
           <TouchableOpacity
             style={styles.detailButton}
@@ -117,10 +190,7 @@ const OrdersScreen = () => {
       </View>
     </View>
   );
-  
-  
-  
-  // Get color for the order status
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'Pending':
@@ -140,15 +210,13 @@ const OrdersScreen = () => {
 
   return (
     <View style={styles.container}>
-      {/* Hide the status bar (optional, if you want to fully hide it) */}
       <StatusBar hidden={true} />
-      
       <View style={styles.backButtonContainer}>
         <TouchableOpacity
           style={styles.backButton}
           onPress={() => router.back()} // Go back to previous screen
         >
-          <Ionicons name="arrow-back-outline" size={28} color="black" /> {/* Ionicons back button */}
+          <Ionicons name="arrow-back-outline" size={28} color="black" />
         </TouchableOpacity>
       </View>
 
