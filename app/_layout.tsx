@@ -64,6 +64,8 @@ export default function Layout() {
       <Tabs.Screen name="order_status" options={{ href: null }} />
       <Tabs.Screen name="information" options={{ href: null }} />
       <Tabs.Screen name="order" options={{ href: null }} />
+      <Tabs.Screen name="orderdetail" options={{ href: null }} />
+
     </Tabs>
   );
 }
