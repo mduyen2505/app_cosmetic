@@ -65,7 +65,9 @@ export const ORDER_LIST = `${BASE_URL}/orders`;
 export const ORDER_CANCEL = `${BASE_URL}/orders/cancel`; 
 export const ORDER_DELIVER = `${BASE_URL}/orders/deliver`; 
 
+export const FORGOT_PASSWORD = `${BASE_URL}/users/forgot-password`; 
 
+export const RESET_PASSWORD = `${BASE_URL}/users/reset-password`; 
 
 
 
